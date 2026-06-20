@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(run)",
+      "Skill(run:*)",
+      "mcp__Claude_in_Chrome__computer",
+      "mcp__Claude_in_Chrome__browser_batch",
+      "mcp__Claude_in_Chrome__find",
+      "mcp__Claude_in_Chrome__javascript_tool",
+      "mcp__supabase__execute_sql",
+      "PowerShell(Stop-Process -Id 23512 -Force -ErrorAction SilentlyContinue; Start-Sleep -Seconds 1; $conn = Get-NetTCPConnection -LocalPort 5173 -ErrorAction SilentlyContinue; if \\($conn\\) { \"Port still in use by PID $\\($conn.OwningProcess\\)\" } else { \"Port 5173 is free\" })",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173)",
+      "mcp__Claude_in_Chrome__navigate"
+    ]
+  },
+  "enabledMcpjsonServers": [
+    "supabase"
+  ]
+}

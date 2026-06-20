@@ -1,0 +1,1522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<title>Room Allocation — Dharshan & Amulya</title>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --blue: #2563eb;
+    --blue-dark: #1d4ed8;
+    --blue-light: #eff6ff;
+    --blue-mid: #bfdbfe;
+    --text: #111827;
+    --text-muted: #6b7280;
+    --border: #e5e7eb;
+    --bg: #f9fafb;
+    --white: #ffffff;
+    --green: #16a34a;
+    --green-bg: #f0fdf4;
+    --orange: #d97706;
+    --orange-bg: #fffbeb;
+    --red: #dc2626;
+    --red-bg: #fef2f2;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #e5e7eb;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+  }
+
+  #app {
+    width: 100%;
+    max-width: 430px;
+    min-height: 100vh;
+    background: var(--white);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── Lucide icon sizing ── */
+  svg.lucide { display: block; flex-shrink: 0; }
+  .nav-item svg.lucide { width: 22px; height: 22px; }
+  .row-icon svg.lucide { width: 20px; height: 20px; }
+  .back-btn svg.lucide { width: 22px; height: 22px; }
+  .topbar-settings svg.lucide { width: 22px; height: 22px; }
+  .login-logo svg.lucide { width: 36px; height: 36px; color: white; }
+  .center-icon svg.lucide { width: 56px; height: 56px; color: var(--blue); }
+  .key-pill svg.lucide { width: 14px; height: 14px; }
+  .call-btn svg.lucide { width: 20px; height: 20px; }
+  .room-chip-key svg.lucide { width: 11px; height: 11px; vertical-align: middle; }
+  .chevron svg.lucide { width: 16px; height: 16px; }
+  .search-icon svg.lucide { width: 16px; height: 16px; color: var(--text-muted); }
+  .badge svg.lucide { width: 11px; height: 11px; }
+
+  /* ── Screens ── */
+  .screen { display: none; flex-direction: column; flex: 1; }
+  .screen.active { display: flex; }
+
+  /* ── Top bar ── */
+  .topbar {
+    background: var(--white);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .topbar h1 { font-size: 17px; font-weight: 600; color: var(--text); flex: 1; }
+  .topbar .subtitle { font-size: 12px; color: var(--text-muted); display: block; font-weight: 400; }
+  .back-btn {
+    width: 32px; height: 32px;
+    border: none; background: none;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; color: var(--blue);
+    flex-shrink: 0;
+  }
+  .topbar-action {
+    border: none; background: none;
+    color: var(--blue); font-size: 14px; font-weight: 600;
+    cursor: pointer; padding: 4px;
+  }
+  .topbar-settings {
+    width: 32px; height: 32px;
+    border: none; background: none;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; color: var(--text-muted);
+    flex-shrink: 0;
+  }
+
+  /* ── Scroll content ── */
+  .scroll { flex: 1; overflow-y: auto; padding-bottom: 80px; }
+
+  /* ── Bottom nav ── */
+  .bottom-nav {
+    background: var(--white);
+    border-top: 1px solid var(--border);
+    display: flex;
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
+  }
+  .nav-item {
+    flex: 1;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 10px 4px;
+    cursor: pointer;
+    border: none; background: none;
+    gap: 4px;
+    color: var(--text-muted);
+    font-size: 11px;
+  }
+  .nav-item.active { color: var(--blue); }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    margin: 12px 16px;
+  }
+
+  /* ── List rows ── */
+  .list-row {
+    padding: 14px 16px;
+    display: flex; align-items: center; gap: 12px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    background: var(--white);
+    transition: background 0.1s;
+  }
+  .list-row:last-child { border-bottom: none; }
+  .list-row:active { background: var(--blue-light); }
+  .row-icon {
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .row-icon.blue { background: var(--blue-light); color: var(--blue); }
+  .row-icon.green { background: var(--green-bg); color: var(--green); }
+  .row-icon.orange { background: var(--orange-bg); color: var(--orange); }
+  .row-body { flex: 1; min-width: 0; }
+  .row-title { font-size: 14px; font-weight: 600; color: var(--text); }
+  .row-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .row-end { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+  .chevron { color: var(--text-muted); display: flex; align-items: center; }
+
+  /* ── Badges ── */
+  .badge {
+    display: inline-flex; align-items: center; gap: 3px;
+    padding: 2px 8px; border-radius: 99px;
+    font-size: 11px; font-weight: 600; white-space: nowrap;
+  }
+  .badge.green { background: var(--green-bg); color: var(--green); }
+  .badge.orange { background: var(--orange-bg); color: var(--orange); }
+  .badge.blue { background: var(--blue-light); color: var(--blue); }
+  .badge.red { background: var(--red-bg); color: var(--red); }
+  .badge.gray { background: var(--bg); color: var(--text-muted); }
+
+  /* ── Buttons ── */
+  .btn {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 12px 20px; border-radius: 10px;
+    font-size: 15px; font-weight: 600;
+    cursor: pointer; border: none;
+    width: 100%;
+  }
+  .btn svg.lucide { width: 18px; height: 18px; }
+  .btn-primary { background: var(--blue); color: white; }
+  .btn-primary:active { background: var(--blue-dark); }
+  .btn-secondary {
+    background: var(--white); color: var(--blue);
+    border: 1.5px solid var(--blue);
+  }
+  .btn-danger { background: var(--red-bg); color: var(--red); }
+  .btn-ghost { background: var(--bg); color: var(--text); }
+  .btn-sm { padding: 8px 14px; font-size: 13px; border-radius: 8px; }
+  .btn-sm svg.lucide { width: 14px; height: 14px; }
+
+  /* ── Form ── */
+  .form-group { margin-bottom: 16px; }
+  label { display: block; font-size: 13px; font-weight: 600; color: var(--text-muted); margin-bottom: 6px; }
+  input, select, textarea {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    font-size: 15px;
+    color: var(--text);
+    background: var(--white);
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  input:focus, select:focus, textarea:focus { border-color: var(--blue); }
+  textarea { resize: none; height: 80px; }
+
+  /* Search with icon */
+  .search-wrap {
+    position: relative;
+  }
+  .search-wrap .search-icon {
+    position: absolute; left: 12px; top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    display: flex;
+  }
+  .search-wrap input { padding-left: 36px; }
+
+  /* ── Section header ── */
+  .section-header {
+    padding: 8px 16px 4px;
+    font-size: 12px; font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  /* ── Stats row ── */
+  .stats-row {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 10px; padding: 16px;
+  }
+  .stat-card {
+    background: var(--blue-light);
+    border-radius: 12px; padding: 14px 10px;
+    text-align: center;
+  }
+  .stat-num { font-size: 24px; font-weight: 700; color: var(--blue); }
+  .stat-label { font-size: 11px; color: var(--blue-dark); margin-top: 2px; font-weight: 500; }
+
+  /* ── Toggle switch ── */
+  .toggle-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .toggle-label { font-size: 14px; color: var(--text); font-weight: 500; }
+  .toggle-sub { font-size: 12px; color: var(--text-muted); }
+  .toggle {
+    position: relative;
+    width: 44px; height: 26px;
+    flex-shrink: 0;
+  }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .slider {
+    position: absolute; cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: #d1d5db; border-radius: 99px;
+    transition: 0.2s;
+  }
+  .slider:before {
+    position: absolute; content: "";
+    height: 20px; width: 20px;
+    left: 3px; bottom: 3px;
+    background: white; border-radius: 50%;
+    transition: 0.2s;
+  }
+  input:checked + .slider { background: var(--blue); }
+  input:checked + .slider:before { transform: translateX(18px); }
+
+  /* ── Room grid ── */
+  .room-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 10px; padding: 16px;
+  }
+  .room-chip {
+    border-radius: 10px; padding: 12px 8px;
+    text-align: center; cursor: pointer;
+    border: 1.5px solid transparent;
+    transition: 0.1s;
+  }
+  .room-chip.vacant { background: var(--blue-light); border-color: var(--blue-mid); }
+  .room-chip.occupied { background: var(--green-bg); border-color: #86efac; }
+  .room-chip.keys-out { background: var(--orange-bg); border-color: #fcd34d; }
+  .room-chip-num { font-size: 16px; font-weight: 700; color: var(--text); }
+  .room-chip-label { font-size: 10px; color: var(--text-muted); margin-top: 3px; display: flex; align-items: center; justify-content: center; gap: 2px; }
+  .room-chip-key { color: var(--orange); display: inline-flex; }
+
+  /* ── Login screen ── */
+  .login-hero {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 40px 32px;
+    background: linear-gradient(160deg, var(--blue-light) 0%, white 60%);
+  }
+  .login-logo {
+    width: 72px; height: 72px;
+    background: var(--blue); border-radius: 20px;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 24px;
+    box-shadow: 0 8px 24px rgba(37,99,235,0.3);
+  }
+  .login-title { font-size: 24px; font-weight: 700; color: var(--text); text-align: center; }
+  .login-sub { font-size: 14px; color: var(--text-muted); text-align: center; margin-top: 8px; margin-bottom: 40px; }
+  .google-btn {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 24px; border-radius: 12px;
+    background: white; border: 1.5px solid var(--border);
+    cursor: pointer; width: 100%;
+    font-size: 15px; font-weight: 600; color: var(--text);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+  .google-g {
+    width: 22px; height: 22px;
+    background: #4285F4; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-size: 13px; font-weight: 700;
+    font-family: Arial, sans-serif;
+    flex-shrink: 0;
+  }
+
+  /* ── Pending screen ── */
+  .center-page {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 40px 32px; text-align: center;
+  }
+  .center-icon { margin-bottom: 20px; }
+
+  /* ── User avatar ── */
+  .user-avatar {
+    width: 36px; height: 36px;
+    border-radius: 50%; background: var(--blue-light);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700; color: var(--blue);
+    flex-shrink: 0;
+  }
+
+  /* ── Detail field ── */
+  .detail-field {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .detail-field label { margin-bottom: 4px; }
+  .detail-value { font-size: 15px; color: var(--text); font-weight: 500; }
+
+  /* ── Phone row with call button ── */
+  .phone-row { display: flex; gap: 10px; align-items: center; }
+  .phone-row input { flex: 1; }
+  .call-btn {
+    width: 48px; height: 48px; flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--green);
+    color: white;
+    display: flex; align-items: center; justify-content: center;
+    text-decoration: none;
+    box-shadow: 0 3px 10px rgba(22,163,74,0.35);
+    transition: background 0.15s;
+  }
+  .call-btn:active { background: #15803d; }
+
+  /* ── Key status pills ── */
+  .key-status { display: flex; gap: 8px; padding: 12px 16px; }
+  .key-pill {
+    flex: 1; padding: 10px 6px; border-radius: 10px;
+    text-align: center; cursor: pointer;
+    border: 1.5px solid var(--border);
+    font-size: 12px; font-weight: 600;
+    color: var(--text-muted);
+    background: var(--bg);
+    display: flex; flex-direction: column;
+    align-items: center; gap: 4px;
+  }
+  .key-pill.active-green { background: var(--green-bg); border-color: #86efac; color: var(--green); }
+  .key-pill.active-orange { background: var(--orange-bg); border-color: #fcd34d; color: var(--orange); }
+
+  /* ── Legend dots ── */
+  .legend-dot {
+    width: 8px; height: 8px; border-radius: 50%; display: inline-block;
+  }
+  .dot-blue { background: var(--blue); }
+  .dot-green { background: var(--green); }
+  .dot-orange { background: var(--orange); }
+
+  /* ── Room access chip ── */
+  .access-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 10px 6px 12px; border-radius: 8px;
+    background: var(--blue-light); border: 1px solid var(--blue-mid);
+    font-size: 13px; font-weight: 500; color: var(--blue);
+    margin: 4px;
+  }
+  .access-chip button {
+    background: none; border: none; cursor: pointer;
+    color: var(--blue); display: flex; align-items: center;
+    padding: 0;
+  }
+  .access-chip button svg.lucide { width: 13px; height: 13px; }
+
+  /* ── Maps banner ── */
+  .maps-banner {
+    display: flex; align-items: center; gap: 12px;
+    margin: 12px 16px; padding: 12px 14px;
+    background: var(--green-bg); border: 1px solid #86efac;
+    border-radius: 12px; text-decoration: none;
+    transition: background 0.1s;
+  }
+  .maps-banner:active { background: #dcfce7; }
+  .maps-banner-icon {
+    width: 36px; height: 36px; border-radius: 10px;
+    background: var(--green); color: white;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .maps-banner-icon svg.lucide { width: 18px; height: 18px; }
+  .maps-banner-body { flex: 1; min-width: 0; }
+  .maps-banner-title { font-size: 13px; font-weight: 600; color: var(--text); }
+  .maps-banner-sub { font-size: 11px; color: var(--green); margin-top: 2px; }
+  .maps-banner-arrow { color: var(--green); display: flex; }
+  .maps-banner-arrow svg.lucide { width: 18px; height: 18px; }
+
+  /* ── Maps icon button on list rows ── */
+  .map-btn {
+    width: 32px; height: 32px; border-radius: 8px;
+    background: var(--green-bg); border: 1px solid #86efac;
+    color: var(--green); display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; cursor: pointer; text-decoration: none;
+  }
+  .map-btn svg.lucide { width: 15px; height: 15px; }
+
+  /* ── Info banner ── */
+  .info-banner {
+    margin: 12px 16px; padding: 12px 14px;
+    background: var(--blue-light); border-radius: 10px;
+    font-size: 13px; color: var(--blue-dark);
+    border: 1px solid var(--blue-mid);
+  }
+
+  /* ── Modal ── */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 100;
+    display: none; align-items: flex-end; justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: white;
+    border-radius: 20px 20px 0 0;
+    width: 100%; max-width: 430px;
+    padding: 24px;
+    max-height: 85vh;
+    overflow-y: auto;
+  }
+  .modal-handle {
+    width: 36px; height: 4px;
+    background: var(--border); border-radius: 2px;
+    margin: 0 auto 20px;
+  }
+  .modal-title { font-size: 17px; font-weight: 700; margin-bottom: 20px; color: var(--text); }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ═══════════════════════════════════════
+       SCREEN: Login
+  ════════════════════════════════════════ -->
+  <div class="screen active" id="s-login">
+    <div class="login-hero">
+      <div class="login-logo">
+        <i data-lucide="hotel"></i>
+      </div>
+      <div class="login-title">Room Allocation</div>
+      <div class="login-sub">Dharshan &amp; Amulya · 05 Jul 2026</div>
+      <button class="google-btn" onclick="goTo('s-pending')">
+        <span class="google-g">G</span>
+        Continue with Google
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       SCREEN: Pending Approval
+  ════════════════════════════════════════ -->
+  <div class="screen" id="s-pending">
+    <div class="center-page">
+      <div class="center-icon"><i data-lucide="clock"></i></div>
+      <div style="font-size:20px;font-weight:700;color:var(--text);margin-bottom:10px">Awaiting Approval</div>
+      <div style="font-size:14px;color:var(--text-muted);line-height:1.6">
+        You're signed in as <strong>coordinator@gmail.com</strong>.<br><br>
+        An admin needs to approve your account and assign you rooms before you can access anything.
+      </div>
+      <div style="margin-top:32px;width:100%;display:flex;gap:10px;flex-direction:column">
+        <button class="btn btn-ghost" onclick="goTo('s-login')">
+          <i data-lucide="log-out"></i> Sign out
+        </button>
+        <button class="btn btn-primary" onclick="goTo('s-home')">
+          <i data-lucide="arrow-right"></i> Demo: Enter as Admin
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       SCREEN: Home / Dashboard
+  ════════════════════════════════════════ -->
+  <div class="screen" id="s-home">
+    <div class="topbar">
+      <div style="flex:1">
+        <h1>Room Allocation <span class="subtitle">Dharshan &amp; Amulya · 05 Jul 2026</span></h1>
+      </div>
+      <button class="topbar-settings" onclick="goTo('s-admin')">
+        <i data-lucide="settings"></i>
+      </button>
+    </div>
+    <div class="scroll">
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-num">68</div>
+          <div class="stat-label">Total Rooms</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num">42</div>
+          <div class="stat-label">Assigned</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num">26</div>
+          <div class="stat-label">Vacant</div>
+        </div>
+      </div>
+
+      <div class="section-header">Lodges</div>
+      <div class="card">
+        <div class="list-row" onclick="goTo('s-lodge')">
+          <div class="row-icon blue"><i data-lucide="building-2"></i></div>
+          <div class="row-body">
+            <div class="row-title">Jothi Lodge</div>
+            <div class="row-sub">15 rooms · 10 assigned</div>
+          </div>
+          <div class="row-end">
+            <span class="badge orange">5 vacant</span>
+            <span class="chevron"><i data-lucide="chevron-right"></i></span>
+          </div>
+        </div>
+        <div class="list-row" onclick="goTo('s-lodge')">
+          <div class="row-icon blue"><i data-lucide="building-2"></i></div>
+          <div class="row-body">
+            <div class="row-title">Dhanalakshmi Lodge</div>
+            <div class="row-sub">18 rooms · 18 assigned</div>
+          </div>
+          <div class="row-end">
+            <span class="badge green">Full</span>
+            <span class="chevron"><i data-lucide="chevron-right"></i></span>
+          </div>
+        </div>
+        <div class="list-row" onclick="goTo('s-lodge')">
+          <div class="row-icon blue"><i data-lucide="building-2"></i></div>
+          <div class="row-body">
+            <div class="row-title">AVS Mahal</div>
+            <div class="row-sub">24 rooms · 20 assigned</div>
+          </div>
+          <div class="row-end">
+            <span class="badge orange">4 vacant</span>
+            <span class="chevron"><i data-lucide="chevron-right"></i></span>
+          </div>
+        </div>
+        <div class="list-row" onclick="goTo('s-lodge')">
+          <div class="row-icon blue"><i data-lucide="building-2"></i></div>
+          <div class="row-body">
+            <div class="row-title">MAD Outside</div>
+            <div class="row-sub">45 rooms · 30 assigned</div>
+          </div>
+          <div class="row-end">
+            <span class="badge orange">15 vacant</span>
+            <span class="chevron"><i data-lucide="chevron-right"></i></span>
+          </div>
+        </div>
+        <div class="list-row" onclick="goTo('s-lodge')">
+          <div class="row-icon blue"><i data-lucide="building-2"></i></div>
+          <div class="row-body">
+            <div class="row-title">AK Residency</div>
+            <div class="row-sub">6 rooms · 6 assigned</div>
+          </div>
+          <div class="row-end">
+            <span class="badge green">Full</span>
+            <span class="chevron"><i data-lucide="chevron-right"></i></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-header">Key Status</div>
+      <div class="card">
+        <div class="list-row" style="cursor:default">
+          <div class="row-icon green"><i data-lucide="key"></i></div>
+          <div class="row-body">
+            <div class="row-title">Keys Given Out</div>
+            <div class="row-sub">38 of 68 rooms</div>
+          </div>
+          <span class="badge green">56%</span>
+        </div>
+        <div class="list-row" style="cursor:default">
+          <div class="row-icon blue"><i data-lucide="lock"></i></div>
+          <div class="row-body">
+            <div class="row-title">Keys Collected Back</div>
+            <div class="row-sub">12 of 38 given</div>
+          </div>
+          <span class="badge blue">32%</span>
+        </div>
+      </div>
+    </div>
+    <div class="bottom-nav">
+      <button class="nav-item active" onclick="nav('s-home',0)">
+        <i data-lucide="home"></i>Home
+      </button>
+      <button class="nav-item" onclick="nav('s-lodges-list',1)">
+        <i data-lucide="building-2"></i>Lodges
+      </button>
+      <button class="nav-item" onclick="nav('s-guests-list',2)">
+        <i data-lucide="users"></i>Guests
+      </button>
+      <button class="nav-item" onclick="nav('s-admin',3)">
+        <i data-lucide="settings"></i>Admin
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       SCREEN: Lodges List
+  ════════════════════════════════════════ -->
+  <div class="screen" id="s-lodges-list">
+    <div class="topbar">
+      <h1>Lodges</h1>
+      <button class="topbar-action" onclick="openModal('modal-add-lodge')">+ Add</button>
+    </div>
+    <div class="scroll">
+      <div class="card">
+        <div class="list-row" onclick="goTo('s-lodge')">
+          <div class="row-icon blue"><i data-lucide="building-2"></i></div>
+          <div class="row-body">
+            <div class="row-title">Jothi Lodge</div>
+            <div class="row-sub">15 rooms · Trichy Main Road</div>
+          </div>
+          <div class="row-end" style="flex-direction:row;align-items:center;gap:8px">
+            <span class="badge orange">5 vacant</span>
+            <a class="map-btn" href="https://maps.google.com" target="_blank" onclick="event.stopPropagation()" title="Navigate"><i data-lucide="navigation"></i></a>
+            <span class="chevron"><i data-lucide="chevron-right"></i></span>
+          </div>
+        </div>
+        <div class="list-row" onclick="goTo('s-lodge')">
+          <div class="row-icon blue"><i data-lucide="building-2"></i></div>
+          <div class="row-body">
+            <div class="row-title">Dhanalakshmi Lodge</div>
+            <div class="row-sub">18 rooms · Opposite Hall</div>
+          </div>
+          <div class="row-end" style="flex-direction:row;align-items:center;gap:8px">
+            <span class="badge green">Full</span>
+            <a class="map-btn" href="https://maps.google.com" target="_blank" onclick="event.stopPropagation()" title="Navigate"><i data-lucide="navigation"></i></a>
+            <span class="chevron"><i data-lucide="chevron-right"></i></span>
+          </div>
+        </div>
+        <div class="list-row" onclick="goTo('s-lodge')">
+          <div class="row-icon blue"><i data-lucide="building-2"></i></div>
+          <div class="row-body">
+            <div class="row-title">AVS Mahal</div>
+            <div class="row-sub">24 rooms · AVS Complex</div>
+          </div>
+          <div class="row-end" style="flex-direction:row;align-items:center;gap:8px">
+            <span class="badge orange">4 vacant</span>
+            <a class="map-btn" href="https://maps.google.com" target="_blank" onclick="event.stopPropagation()" title="Navigate"><i data-lucide="navigation"></i></a>
+            <span class="chevron"><i data-lucide="chevron-right"></i></span>
+          </div>
+        </div>
+        <div class="list-row" onclick="goTo('s-lodge')">
+          <div class="row-icon blue"><i data-lucide="building-2"></i></div>
+          <div class="row-body">
+            <div class="row-title">MAD Outside</div>
+            <div class="row-sub">45 rooms · Ground + 1st + 2nd</div>
+          </div>
+          <div class="row-end" style="flex-direction:row;align-items:center;gap:8px">
+            <span class="badge orange">15 vacant</span>
+            <a class="map-btn" href="https://maps.google.com" target="_blank" onclick="event.stopPropagation()" title="Navigate"><i data-lucide="navigation"></i></a>
+            <span class="chevron"><i data-lucide="chevron-right"></i></span>
+          </div>
+        </div>
+        <div class="list-row" onclick="goTo('s-lodge')">
+          <div class="row-icon blue"><i data-lucide="building-2"></i></div>
+          <div class="row-body">
+            <div class="row-title">AK Residency</div>
+            <div class="row-sub">6 rooms</div>
+          </div>
+          <div class="row-end" style="flex-direction:row;align-items:center;gap:8px">
+            <span class="badge green">Full</span>
+            <a class="map-btn" href="https://maps.google.com" target="_blank" onclick="event.stopPropagation()" title="Navigate"><i data-lucide="navigation"></i></a>
+            <span class="chevron"><i data-lucide="chevron-right"></i></span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="bottom-nav">
+      <button class="nav-item" onclick="nav('s-home',0)">
+        <i data-lucide="home"></i>Home
+      </button>
+      <button class="nav-item active" onclick="nav('s-lodges-list',1)">
+        <i data-lucide="building-2"></i>Lodges
+      </button>
+      <button class="nav-item" onclick="nav('s-guests-list',2)">
+        <i data-lucide="users"></i>Guests
+      </button>
+      <button class="nav-item" onclick="nav('s-admin',3)">
+        <i data-lucide="settings"></i>Admin
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       SCREEN: Lodge Detail (room grid)
+  ════════════════════════════════════════ -->
+  <div class="screen" id="s-lodge">
+    <div class="topbar">
+      <button class="back-btn" onclick="goBack()"><i data-lucide="chevron-left"></i></button>
+      <h1>Jothi Lodge <span class="subtitle">15 rooms</span></h1>
+      <button class="topbar-action" onclick="openModal('modal-add-room')">+ Room</button>
+    </div>
+    <div class="scroll">
+      <!-- Maps navigate banner -->
+      <a href="https://maps.google.com" target="_blank" class="maps-banner">
+        <div class="maps-banner-icon"><i data-lucide="map-pin"></i></div>
+        <div class="maps-banner-body">
+          <div class="maps-banner-title">Trichy Main Road, Tiruchirappalli</div>
+          <div class="maps-banner-sub">Tap to open in Google Maps</div>
+        </div>
+        <div class="maps-banner-arrow"><i data-lucide="navigation"></i></div>
+      </a>
+      <!-- Legend -->
+      <div style="display:flex;gap:12px;padding:12px 16px 4px;flex-wrap:wrap;align-items:center">
+        <span style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text-muted)">
+          <span class="legend-dot dot-blue"></span>Vacant
+        </span>
+        <span style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text-muted)">
+          <span class="legend-dot dot-green"></span>Assigned
+        </span>
+        <span style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text-muted)">
+          <span class="legend-dot dot-orange"></span>Key given
+        </span>
+      </div>
+
+      <div class="section-header">Ground Floor</div>
+      <div class="room-grid">
+        <div class="room-chip vacant" onclick="goTo('s-room')">
+          <div class="room-chip-num">1</div>
+          <div class="room-chip-label">DBL</div>
+        </div>
+        <div class="room-chip occupied" onclick="goTo('s-room')">
+          <div class="room-chip-num">2</div>
+          <div class="room-chip-label">Renuka</div>
+        </div>
+        <div class="room-chip occupied" onclick="goTo('s-room')">
+          <div class="room-chip-num">3</div>
+          <div class="room-chip-label">Jayashree</div>
+        </div>
+        <div class="room-chip keys-out" onclick="goTo('s-room')">
+          <div class="room-chip-num">4</div>
+          <div class="room-chip-label">Ashok <span class="room-chip-key"><i data-lucide="key"></i></span></div>
+        </div>
+        <div class="room-chip occupied" onclick="goTo('s-room')">
+          <div class="room-chip-num">5</div>
+          <div class="room-chip-label">PLM</div>
+        </div>
+        <div class="room-chip vacant" onclick="goTo('s-room')">
+          <div class="room-chip-num">6</div>
+          <div class="room-chip-label">DBL</div>
+        </div>
+      </div>
+
+      <div class="section-header">First Floor</div>
+      <div class="room-grid">
+        <div class="room-chip occupied" onclick="goTo('s-room')">
+          <div class="room-chip-num">7</div>
+          <div class="room-chip-label">Ocheri</div>
+        </div>
+        <div class="room-chip keys-out" onclick="goTo('s-room')">
+          <div class="room-chip-num">8</div>
+          <div class="room-chip-label">PRT <span class="room-chip-key"><i data-lucide="key"></i></span></div>
+        </div>
+        <div class="room-chip vacant" onclick="goTo('s-room')">
+          <div class="room-chip-num">9</div>
+          <div class="room-chip-label">DBL+SGL</div>
+        </div>
+        <div class="room-chip keys-out" onclick="goTo('s-room')">
+          <div class="room-chip-num">10</div>
+          <div class="room-chip-label">Dharshan <span class="room-chip-key"><i data-lucide="key"></i></span></div>
+        </div>
+        <div class="room-chip occupied" onclick="goTo('s-room')">
+          <div class="room-chip-num">11</div>
+          <div class="room-chip-label">Chethana</div>
+        </div>
+        <div class="room-chip vacant" onclick="goTo('s-room')">
+          <div class="room-chip-num">12</div>
+          <div class="room-chip-label">DBL</div>
+        </div>
+      </div>
+
+      <div class="section-header">Second Floor</div>
+      <div class="room-grid">
+        <div class="room-chip keys-out" onclick="goTo('s-room')">
+          <div class="room-chip-num">13</div>
+          <div class="room-chip-label">Makeup <span class="room-chip-key"><i data-lucide="key"></i></span></div>
+        </div>
+        <div class="room-chip occupied" onclick="goTo('s-room')">
+          <div class="room-chip-num">14</div>
+          <div class="room-chip-label">Rajasekhar</div>
+        </div>
+        <div class="room-chip vacant" onclick="goTo('s-room')">
+          <div class="room-chip-num">15</div>
+          <div class="room-chip-label">DBL</div>
+        </div>
+      </div>
+    </div>
+    <div class="bottom-nav">
+      <button class="nav-item" onclick="nav('s-home',0)">
+        <i data-lucide="home"></i>Home
+      </button>
+      <button class="nav-item active" onclick="nav('s-lodges-list',1)">
+        <i data-lucide="building-2"></i>Lodges
+      </button>
+      <button class="nav-item" onclick="nav('s-guests-list',2)">
+        <i data-lucide="users"></i>Guests
+      </button>
+      <button class="nav-item" onclick="nav('s-admin',3)">
+        <i data-lucide="settings"></i>Admin
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       SCREEN: Room Detail
+  ════════════════════════════════════════ -->
+  <div class="screen" id="s-room">
+    <div class="topbar">
+      <button class="back-btn" onclick="goBack()"><i data-lucide="chevron-left"></i></button>
+      <h1>Room 4 <span class="subtitle">Jothi Lodge · First Floor</span></h1>
+      <button class="topbar-action" onclick="openModal('modal-edit-room')">Edit</button>
+    </div>
+    <div class="scroll">
+
+      <!-- Key status bar -->
+      <div class="key-status">
+        <div class="key-pill" id="kp-none" onclick="setKey('none')">
+          <i data-lucide="key"></i>Not given
+        </div>
+        <div class="key-pill active-orange" id="kp-given" onclick="setKey('given')">
+          <i data-lucide="key"></i>Key given
+        </div>
+        <div class="key-pill" id="kp-back" onclick="setKey('back')">
+          <i data-lucide="check-circle-2"></i>Collected
+        </div>
+      </div>
+
+      <!-- Room info -->
+      <div class="section-header">Room Info</div>
+      <div class="card">
+        <div class="detail-field">
+          <label>Room Type</label>
+          <div class="detail-value"><span class="badge blue">Deluxe</span></div>
+        </div>
+        <div class="detail-field">
+          <label>Bed Config</label>
+          <div class="detail-value">Double Bed × 1, Single Bed × 1</div>
+        </div>
+        <div class="detail-field">
+          <label>Extra Bed</label>
+          <div class="detail-value">Yes</div>
+        </div>
+        <div class="detail-field">
+          <label>Category</label>
+          <div class="detail-value"><span class="badge blue">TRT</span></div>
+        </div>
+        <div class="detail-field" style="border:none">
+          <label>Notes</label>
+          <div class="detail-value">Bridal party room</div>
+        </div>
+      </div>
+
+      <!-- Guest info — editable inline -->
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 16px 4px">
+        <div class="section-header" style="padding:0">Guest</div>
+        <button class="btn btn-sm btn-secondary" style="width:auto" onclick="openModal('modal-assign-guest')">
+          <i data-lucide="user-check"></i> Change guest
+        </button>
+      </div>
+      <div class="card">
+        <div class="detail-field">
+          <label>Name</label>
+          <input type="text" value="Ashok Kumar" placeholder="Guest name" />
+        </div>
+        <div class="detail-field">
+          <label>Phone</label>
+          <div class="phone-row">
+            <input type="tel" value="9866026437" placeholder="Mobile number" />
+            <a href="tel:9866026437" class="call-btn" title="Call guest">
+              <i data-lucide="phone"></i>
+            </a>
+          </div>
+        </div>
+        <div class="detail-field">
+          <label>Party size (no. of persons)</label>
+          <input type="number" value="3" placeholder="0" />
+        </div>
+        <div class="detail-field">
+          <label>Side</label>
+          <select>
+            <option>Bride's side</option>
+            <option>Groom's side</option>
+            <option>Both / Family</option>
+          </select>
+        </div>
+        <div class="detail-field" style="border:none">
+          <label>Notes</label>
+          <textarea placeholder="Any notes about the guest…">Travelling from Bangalore, arrives late</textarea>
+        </div>
+      </div>
+      <div style="padding:0 16px 10px">
+        <button class="btn btn-primary" onclick="alert('Saved!')">
+          <i data-lucide="save"></i> Save changes
+        </button>
+      </div>
+      <div style="padding:0 16px 16px">
+        <button class="btn btn-danger" onclick="alert('Guest removed from this room')">
+          <i data-lucide="user-x"></i> Remove guest from room
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       SCREEN: Guests List
+  ════════════════════════════════════════ -->
+  <div class="screen" id="s-guests-list">
+    <div class="topbar">
+      <h1>Guests</h1>
+      <button class="topbar-action" onclick="openModal('modal-add-guest')">+ Add</button>
+    </div>
+    <div class="scroll">
+      <div style="padding:12px 16px">
+        <div class="search-wrap">
+          <span class="search-icon"><i data-lucide="search"></i></span>
+          <input type="search" placeholder="Search guests…" />
+        </div>
+      </div>
+      <div class="card">
+        <div class="list-row" onclick="goTo('s-guest-detail')">
+          <div class="row-icon blue"><i data-lucide="user"></i></div>
+          <div class="row-body">
+            <div class="row-title">Ashok Kumar</div>
+            <div class="row-sub">9866026437 · 3 persons</div>
+          </div>
+          <div class="row-end">
+            <span class="badge green">Room 4</span>
+            <span class="chevron"><i data-lucide="chevron-right"></i></span>
+          </div>
+        </div>
+        <div class="list-row" onclick="goTo('s-guest-detail')">
+          <div class="row-icon blue"><i data-lucide="user"></i></div>
+          <div class="row-body">
+            <div class="row-title">Renuka</div>
+            <div class="row-sub">9003391222 · 4 persons</div>
+          </div>
+          <div class="row-end">
+            <span class="badge green">Room 3</span>
+            <span class="chevron"><i data-lucide="chevron-right"></i></span>
+          </div>
+        </div>
+        <div class="list-row" onclick="goTo('s-guest-detail')">
+          <div class="row-icon blue"><i data-lucide="user"></i></div>
+          <div class="row-body">
+            <div class="row-title">Jayashree</div>
+            <div class="row-sub">9940640599 · 4 persons</div>
+          </div>
+          <div class="row-end">
+            <span class="badge green">Room 5</span>
+            <span class="chevron"><i data-lucide="chevron-right"></i></span>
+          </div>
+        </div>
+        <div class="list-row" onclick="goTo('s-guest-detail')">
+          <div class="row-icon orange"><i data-lucide="user"></i></div>
+          <div class="row-body">
+            <div class="row-title">Narasimha Rao</div>
+            <div class="row-sub">7382255292 · 2 persons</div>
+          </div>
+          <div class="row-end">
+            <span class="badge gray">No room</span>
+            <span class="chevron"><i data-lucide="chevron-right"></i></span>
+          </div>
+        </div>
+        <div class="list-row" onclick="goTo('s-guest-detail')">
+          <div class="row-icon blue"><i data-lucide="user"></i></div>
+          <div class="row-body">
+            <div class="row-title">G.S Anandhan</div>
+            <div class="row-sub">8217688950 · Bangalore</div>
+          </div>
+          <div class="row-end">
+            <span class="badge green">Room 1</span>
+            <span class="chevron"><i data-lucide="chevron-right"></i></span>
+          </div>
+        </div>
+        <div class="list-row" onclick="goTo('s-guest-detail')">
+          <div class="row-icon blue"><i data-lucide="user"></i></div>
+          <div class="row-body">
+            <div class="row-title">Kasthuri Rangan</div>
+            <div class="row-sub">9443130907 · Kumbakonam</div>
+          </div>
+          <div class="row-end">
+            <span class="badge green">Room 2</span>
+            <span class="chevron"><i data-lucide="chevron-right"></i></span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="bottom-nav">
+      <button class="nav-item" onclick="nav('s-home',0)">
+        <i data-lucide="home"></i>Home
+      </button>
+      <button class="nav-item" onclick="nav('s-lodges-list',1)">
+        <i data-lucide="building-2"></i>Lodges
+      </button>
+      <button class="nav-item active" onclick="nav('s-guests-list',2)">
+        <i data-lucide="users"></i>Guests
+      </button>
+      <button class="nav-item" onclick="nav('s-admin',3)">
+        <i data-lucide="settings"></i>Admin
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       SCREEN: Guest Detail
+  ════════════════════════════════════════ -->
+  <div class="screen" id="s-guest-detail">
+    <div class="topbar">
+      <button class="back-btn" onclick="goBack()"><i data-lucide="chevron-left"></i></button>
+      <h1>Guest Details</h1>
+    </div>
+    <div class="scroll">
+      <div class="section-header">Info</div>
+      <div class="card">
+        <div class="detail-field">
+          <label>Name</label>
+          <input type="text" value="Ashok Kumar" />
+        </div>
+        <div class="detail-field">
+          <label>Phone</label>
+          <div class="phone-row">
+            <input type="tel" value="9866026437" />
+            <a href="tel:9866026437" class="call-btn" title="Call guest">
+              <i data-lucide="phone"></i>
+            </a>
+          </div>
+        </div>
+        <div class="detail-field">
+          <label>Party size</label>
+          <input type="number" value="3" />
+        </div>
+        <div class="detail-field">
+          <label>Hometown / From</label>
+          <input type="text" value="Bangalore" />
+        </div>
+        <div class="detail-field">
+          <label>Side</label>
+          <select><option>Bride's side</option><option>Groom's side</option></select>
+        </div>
+        <div class="detail-field" style="border:none">
+          <label>Notes</label>
+          <textarea>Travelling from Bangalore, arrives late</textarea>
+        </div>
+      </div>
+
+      <div class="section-header">Assigned Room</div>
+      <div class="card">
+        <div class="list-row" onclick="goTo('s-room')">
+          <div class="row-icon green"><i data-lucide="building-2"></i></div>
+          <div class="row-body">
+            <div class="row-title">Room 4 — Jothi Lodge</div>
+            <div class="row-sub">Double Bed × 1, Single Bed × 1 · 1st Floor</div>
+          </div>
+          <span class="badge orange">
+            <i data-lucide="key"></i> Key given
+          </span>
+        </div>
+      </div>
+
+      <div style="padding:0 16px 16px;display:flex;flex-direction:column;gap:10px">
+        <button class="btn btn-primary" onclick="alert('Saved!')">
+          <i data-lucide="save"></i> Save changes
+        </button>
+        <button class="btn btn-ghost" onclick="openModal('modal-assign-guest')">
+          <i data-lucide="refresh-cw"></i> Reassign to a different room
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       SCREEN: Admin Panel
+  ════════════════════════════════════════ -->
+  <div class="screen" id="s-admin">
+    <div class="topbar">
+      <h1>Admin</h1>
+    </div>
+    <div class="scroll">
+
+      <div class="section-header">Pending Users</div>
+      <div class="card">
+        <div class="list-row">
+          <div class="user-avatar">RK</div>
+          <div class="row-body">
+            <div class="row-title">Ravi Kumar</div>
+            <div class="row-sub">ravi.kumar@gmail.com</div>
+          </div>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-sm btn-secondary" style="width:auto" onclick="openModal('modal-approve-user')">Approve</button>
+            <button class="btn btn-sm btn-danger" style="width:auto;padding:8px" onclick="alert('Rejected')">
+              <i data-lucide="x"></i>
+            </button>
+          </div>
+        </div>
+        <div class="list-row">
+          <div class="user-avatar">SP</div>
+          <div class="row-body">
+            <div class="row-title">Sunita Patel</div>
+            <div class="row-sub">sunita.p@gmail.com</div>
+          </div>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-sm btn-secondary" style="width:auto" onclick="openModal('modal-approve-user')">Approve</button>
+            <button class="btn btn-sm btn-danger" style="width:auto;padding:8px" onclick="alert('Rejected')">
+              <i data-lucide="x"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-header">Active Coordinators</div>
+      <div class="card">
+        <div class="list-row" onclick="openModal('modal-user-access')">
+          <div class="user-avatar">AK</div>
+          <div class="row-body">
+            <div class="row-title">Anand K</div>
+            <div class="row-sub">anand.k@gmail.com · 8 rooms</div>
+          </div>
+          <div class="row-end">
+            <span class="badge blue">Coordinator</span>
+            <span class="chevron"><i data-lucide="chevron-right"></i></span>
+          </div>
+        </div>
+        <div class="list-row" onclick="openModal('modal-user-access')">
+          <div class="user-avatar">PM</div>
+          <div class="row-body">
+            <div class="row-title">Priya M</div>
+            <div class="row-sub">priya.m@gmail.com · 15 rooms</div>
+          </div>
+          <div class="row-end">
+            <span class="badge blue">Coordinator</span>
+            <span class="chevron"><i data-lucide="chevron-right"></i></span>
+          </div>
+        </div>
+        <div class="list-row">
+          <div class="user-avatar" style="background:var(--green-bg);color:var(--green)">DA</div>
+          <div class="row-body">
+            <div class="row-title">Dharshan A (You)</div>
+            <div class="row-sub">dharshanaitemp@gmail.com</div>
+          </div>
+          <div class="row-end">
+            <span class="badge green">Admin</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-header">Settings</div>
+      <div class="card">
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-label">Require key confirmation</div>
+            <div class="toggle-sub">Coordinators must mark keys given/collected</div>
+          </div>
+          <label class="toggle"><input type="checkbox" checked><span class="slider"></span></label>
+        </div>
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-label">Allow guest edits</div>
+            <div class="toggle-sub">Coordinators can edit guest info</div>
+          </div>
+          <label class="toggle"><input type="checkbox" checked><span class="slider"></span></label>
+        </div>
+        <div class="toggle-row" style="border:none">
+          <div>
+            <div class="toggle-label">Show phone numbers</div>
+            <div class="toggle-sub">Visible to all coordinators</div>
+          </div>
+          <label class="toggle"><input type="checkbox" checked><span class="slider"></span></label>
+        </div>
+      </div>
+
+      <div style="padding:16px">
+        <button class="btn btn-ghost" onclick="goTo('s-login')">
+          <i data-lucide="log-out"></i> Sign out
+        </button>
+      </div>
+    </div>
+    <div class="bottom-nav">
+      <button class="nav-item" onclick="nav('s-home',0)">
+        <i data-lucide="home"></i>Home
+      </button>
+      <button class="nav-item" onclick="nav('s-lodges-list',1)">
+        <i data-lucide="building-2"></i>Lodges
+      </button>
+      <button class="nav-item" onclick="nav('s-guests-list',2)">
+        <i data-lucide="users"></i>Guests
+      </button>
+      <button class="nav-item active" onclick="nav('s-admin',3)">
+        <i data-lucide="settings"></i>Admin
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       MODALS
+  ════════════════════════════════════════ -->
+
+  <!-- Add Lodge -->
+  <div class="modal-overlay" id="modal-add-lodge" onclick="closeModal(event,'modal-add-lodge')">
+    <div class="modal">
+      <div class="modal-handle"></div>
+      <div class="modal-title">Add Lodge</div>
+      <div class="form-group"><label>Lodge Name</label><input type="text" placeholder="e.g. Jothi Lodge" /></div>
+      <div class="form-group"><label>Address / Notes</label><textarea placeholder="Street, landmark…"></textarea></div>
+      <div class="form-group">
+        <label>Google Maps Link</label>
+        <input type="url" placeholder="Paste maps.google.com or goo.gl link…" />
+        <div style="font-size:12px;color:var(--text-muted);margin-top:6px;line-height:1.5">
+          Open Google Maps → Share → Copy link, then paste it here.
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="closeModalById('modal-add-lodge')">
+        <i data-lucide="plus"></i> Create Lodge
+      </button>
+    </div>
+  </div>
+
+  <!-- Add Room -->
+  <div class="modal-overlay" id="modal-add-room" onclick="closeModal(event,'modal-add-room')">
+    <div class="modal">
+      <div class="modal-handle"></div>
+      <div class="modal-title">Add Room</div>
+      <div class="form-group"><label>Room Number</label><input type="text" placeholder="e.g. 16" /></div>
+      <div class="form-group"><label>Room Type</label>
+        <select id="add-room-type" onchange="toggleCustomType('add-room-type','add-custom-type')">
+          <option value="">— select type —</option>
+          <option>Standard</option>
+          <option>Deluxe</option>
+          <option>AC</option>
+          <option>Non-AC</option>
+          <option>Suite</option>
+          <option>custom">Custom…</option>
+        </select>
+        <input type="text" id="add-custom-type" placeholder="Enter room type…" style="margin-top:8px;display:none" />
+      </div>
+      <div class="form-group"><label>Bed Configuration</label>
+        <select>
+          <option>Double Bed × 1</option>
+          <option>Double Bed × 1, Single Bed × 1</option>
+          <option>Double Bed × 2</option>
+          <option>Single Bed × 2</option>
+          <option>Custom…</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Floor</label>
+        <select>
+          <option>Ground Floor</option>
+          <option>First Floor</option>
+          <option>Second Floor</option>
+          <option>Third Floor</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Category</label>
+        <select><option>TRT</option><option>MPT</option></select>
+      </div>
+      <div class="form-group"><label>Extra bed available?</label>
+        <select><option>No</option><option>Yes</option></select>
+      </div>
+      <button class="btn btn-primary" onclick="closeModalById('modal-add-room')">
+        <i data-lucide="plus"></i> Create Room
+      </button>
+    </div>
+  </div>
+
+  <!-- Edit Room -->
+  <div class="modal-overlay" id="modal-edit-room" onclick="closeModal(event,'modal-edit-room')">
+    <div class="modal">
+      <div class="modal-handle"></div>
+      <div class="modal-title">Edit Room 4</div>
+      <div class="form-group"><label>Room Number</label><input type="text" value="4" /></div>
+      <div class="form-group"><label>Room Type</label>
+        <select id="edit-room-type" onchange="toggleCustomType('edit-room-type','edit-custom-type')">
+          <option>Standard</option>
+          <option selected>Deluxe</option>
+          <option>AC</option>
+          <option>Non-AC</option>
+          <option>Suite</option>
+          <option value="custom">Custom…</option>
+        </select>
+        <input type="text" id="edit-custom-type" placeholder="Enter room type…" style="margin-top:8px;display:none" />
+      </div>
+      <div class="form-group"><label>Bed Configuration</label>
+        <select><option>Double Bed × 1, Single Bed × 1</option></select>
+      </div>
+      <div class="form-group"><label>Floor</label>
+        <select><option selected>First Floor</option></select>
+      </div>
+      <div class="form-group"><label>Notes</label><textarea>Bridal party room</textarea></div>
+      <button class="btn btn-primary" onclick="closeModalById('modal-edit-room')">
+        <i data-lucide="save"></i> Save changes
+      </button>
+      <div style="margin-top:10px">
+        <button class="btn btn-danger" onclick="closeModalById('modal-edit-room')">
+          <i data-lucide="trash-2"></i> Delete room
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Guest -->
+  <div class="modal-overlay" id="modal-add-guest" onclick="closeModal(event,'modal-add-guest')">
+    <div class="modal">
+      <div class="modal-handle"></div>
+      <div class="modal-title">Add Guest</div>
+      <div class="form-group"><label>Full Name</label><input type="text" placeholder="Guest name" /></div>
+      <div class="form-group"><label>Phone</label><input type="tel" placeholder="Mobile number" /></div>
+      <div class="form-group"><label>Party size</label><input type="number" placeholder="No. of persons" /></div>
+      <div class="form-group"><label>Hometown</label><input type="text" placeholder="City / town" /></div>
+      <div class="form-group"><label>Side</label>
+        <select><option>Bride's side</option><option>Groom's side</option><option>Both / Family</option></select>
+      </div>
+      <button class="btn btn-primary" onclick="closeModalById('modal-add-guest')">
+        <i data-lucide="user-plus"></i> Add Guest
+      </button>
+    </div>
+  </div>
+
+  <!-- Assign Guest to Room -->
+  <div class="modal-overlay" id="modal-assign-guest" onclick="closeModal(event,'modal-assign-guest')">
+    <div class="modal">
+      <div class="modal-handle"></div>
+      <div class="modal-title">Assign Guest to Room</div>
+      <div class="form-group">
+        <div class="search-wrap">
+          <span class="search-icon"><i data-lucide="search"></i></span>
+          <input type="search" placeholder="Search guest…" />
+        </div>
+      </div>
+      <div class="card" style="margin:0 0 16px">
+        <div class="list-row" onclick="closeModalById('modal-assign-guest')">
+          <div class="row-body">
+            <div class="row-title">Narasimha Rao</div>
+            <div class="row-sub">7382255292 · 2 persons · No room</div>
+          </div>
+          <span class="badge gray">Unassigned</span>
+        </div>
+        <div class="list-row" onclick="closeModalById('modal-assign-guest')">
+          <div class="row-body">
+            <div class="row-title">Vasantha Rani</div>
+            <div class="row-sub">9397028963 · Tirupati</div>
+          </div>
+          <span class="badge gray">Unassigned</span>
+        </div>
+        <div class="list-row" onclick="closeModalById('modal-assign-guest')">
+          <div class="row-body">
+            <div class="row-title">Ashok Kumar (current)</div>
+            <div class="row-sub">9866026437 · Currently in this room</div>
+          </div>
+          <span class="badge green">This room</span>
+        </div>
+      </div>
+      <button class="btn btn-ghost" onclick="closeModalById('modal-assign-guest')">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Approve User -->
+  <div class="modal-overlay" id="modal-approve-user" onclick="closeModal(event,'modal-approve-user')">
+    <div class="modal">
+      <div class="modal-handle"></div>
+      <div class="modal-title">Approve Ravi Kumar</div>
+      <div class="info-banner">Choose which rooms this coordinator can view and edit.</div>
+      <div class="form-group" style="margin-top:12px">
+        <label>Quick assign: whole lodge</label>
+        <select onchange="alert('Will grant access to all rooms in this lodge')">
+          <option value="">— select a lodge —</option>
+          <option>Jothi Lodge (15 rooms)</option>
+          <option>Dhanalakshmi Lodge (18 rooms)</option>
+          <option>AVS Mahal (24 rooms)</option>
+          <option>MAD Outside (45 rooms)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Or add individual rooms</label>
+        <input type="text" placeholder="Room number…" />
+      </div>
+      <div style="margin-bottom:16px">
+        <div class="access-chip">Jothi – Room 4 <button onclick="this.parentElement.remove()"><i data-lucide="x"></i></button></div>
+        <div class="access-chip">Jothi – Room 5 <button onclick="this.parentElement.remove()"><i data-lucide="x"></i></button></div>
+        <div class="access-chip">AVS – Room 203 <button onclick="this.parentElement.remove()"><i data-lucide="x"></i></button></div>
+      </div>
+      <button class="btn btn-primary" onclick="closeModalById('modal-approve-user')">
+        <i data-lucide="user-check"></i> Approve &amp; save access
+      </button>
+      <div style="margin-top:10px">
+        <button class="btn btn-ghost" onclick="closeModalById('modal-approve-user')">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- User Access edit -->
+  <div class="modal-overlay" id="modal-user-access" onclick="closeModal(event,'modal-user-access')">
+    <div class="modal">
+      <div class="modal-handle"></div>
+      <div class="modal-title">Anand K — Room Access</div>
+      <div class="info-banner">8 rooms assigned. Tap × to revoke individual rooms, or add more.</div>
+      <div style="margin:12px 0">
+        <div class="access-chip">Jothi – 1 <button onclick="this.parentElement.remove()"><i data-lucide="x"></i></button></div>
+        <div class="access-chip">Jothi – 2 <button onclick="this.parentElement.remove()"><i data-lucide="x"></i></button></div>
+        <div class="access-chip">Jothi – 3 <button onclick="this.parentElement.remove()"><i data-lucide="x"></i></button></div>
+        <div class="access-chip">AVS – 4 <button onclick="this.parentElement.remove()"><i data-lucide="x"></i></button></div>
+        <div class="access-chip">AVS – 7 <button onclick="this.parentElement.remove()"><i data-lucide="x"></i></button></div>
+        <div class="access-chip">AVS – 203 <button onclick="this.parentElement.remove()"><i data-lucide="x"></i></button></div>
+        <div class="access-chip">MAD – 16 <button onclick="this.parentElement.remove()"><i data-lucide="x"></i></button></div>
+        <div class="access-chip">MAD – 18 <button onclick="this.parentElement.remove()"><i data-lucide="x"></i></button></div>
+      </div>
+      <div class="form-group">
+        <label>Add more rooms</label>
+        <select>
+          <option value="">— select a lodge to grant all —</option>
+          <option>Dhanalakshmi Lodge (18 rooms)</option>
+          <option>MAD Outside (45 rooms)</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-primary" onclick="closeModalById('modal-user-access')">
+          <i data-lucide="save"></i> Save
+        </button>
+        <button class="btn btn-danger" onclick="closeModalById('modal-user-access')">
+          <i data-lucide="shield-off"></i> Revoke all
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- #app -->
+
+<script>
+  let history = ['s-login'];
+
+  function goTo(id) {
+    const cur = document.querySelector('.screen.active');
+    const next = document.getElementById(id);
+    if (!next || cur === next) return;
+    cur.classList.remove('active');
+    next.classList.add('active');
+    if (history[history.length-1] !== id) history.push(id);
+    window.scrollTo(0,0);
+  }
+
+  function goBack() {
+    history.pop();
+    const prev = history[history.length - 1] || 's-home';
+    const cur = document.querySelector('.screen.active');
+    const target = document.getElementById(prev);
+    cur.classList.remove('active');
+    target.classList.add('active');
+  }
+
+  function nav(id) {
+    goTo(id);
+    history = [id];
+  }
+
+  function openModal(id) {
+    document.getElementById(id).classList.add('open');
+  }
+
+  function closeModalById(id) {
+    document.getElementById(id).classList.remove('open');
+  }
+
+  function closeModal(e, id) {
+    if (e.target === e.currentTarget) closeModalById(id);
+  }
+
+  function setKey(state) {
+    document.getElementById('kp-none').className = 'key-pill';
+    document.getElementById('kp-given').className = 'key-pill';
+    document.getElementById('kp-back').className = 'key-pill';
+    if (state === 'given') document.getElementById('kp-given').className = 'key-pill active-orange';
+    else if (state === 'back') document.getElementById('kp-back').className = 'key-pill active-green';
+    else document.getElementById('kp-none').className = 'key-pill active-orange';
+  }
+
+  function toggleCustomType(selectId, inputId) {
+    const sel = document.getElementById(selectId);
+    const inp = document.getElementById(inputId);
+    inp.style.display = sel.value === 'custom' ? 'block' : 'none';
+    if (sel.value === 'custom') inp.focus();
+  }
+
+  // Initialise Lucide icons once DOM is ready
+  document.addEventListener('DOMContentLoaded', () => lucide.createIcons());
+</script>
+</body>
+</html>

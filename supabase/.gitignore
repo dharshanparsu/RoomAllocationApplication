@@ -1,0 +1,9 @@
+# Supabase local development
+.env.local
+.branches
+*.swp
+*.swo
+*~
+.DS_Store
+.env
+supabase/seed.sql

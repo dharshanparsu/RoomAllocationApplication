@@ -1,0 +1,21 @@
+# Supabase config
+[api]
+enabled = true
+max_body_size = "20 MiB"
+default_query_only = true
+
+[db]
+seed_file = "seed.sql"
+
+[realtime]
+enabled = true
+max_bytes_per_second = 1048576
+
+[auth]
+enable_signup = true
+enable_autoconfirm = false
+jwt_exp_minutes = 3600
+enable_refresh_token_rotation = true
+
+[storage]
+file_size_limit = 52428800
