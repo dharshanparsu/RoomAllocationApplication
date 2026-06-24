@@ -30,7 +30,7 @@ function AppShell() {
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-white">
-      <div key={screenKey(screen)} className="screen-in flex-1 overflow-hidden">
+      <div key={screenKey(screen)} className="screen-in flex-1 flex flex-col overflow-hidden">
         {screen.name === 'home' && <HomeScreen />}
         {screen.name === 'allocations' && <AllocationsScreen />}
         {screen.name === 'lodges' && <LodgesScreen />}
