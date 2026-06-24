@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ChevronLeft, Navigation, Key, Plus, Phone } from 'lucide-react';
+import { ChevronLeft, Navigation, Key, Plus, Phone, Trash } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useNavigation } from '../contexts/NavigationContext';
 
@@ -37,7 +37,12 @@ export function LodgeDetailScreen({ lodgeId }: { lodgeId: string }) {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
   const [form, setForm] = useState({ room_no: '', room_type: '', bed_config: BED_CONFIGS[0], floor: FLOORS[0], category: 'TRT', extra_bed: false });
+  
+  const [editForm, setEditForm] = useState({ name: '', address: '', maps_link: '' });
+  const [editContacts, setEditContacts] = useState<Contact[]>([]);
+  
   const [saving, setSaving] = useState(false);
 
   async function load() {
@@ -54,6 +59,47 @@ export function LodgeDetailScreen({ lodgeId }: { lodgeId: string }) {
   }
 
   useEffect(() => { load(); }, [lodgeId]);
+
+  const handleOpenEdit = () => {
+    if (!lodge) return;
+    setEditForm({
+      name: lodge.name || '',
+      address: lodge.address || '',
+      maps_link: lodge.maps_link || '',
+    });
+    setEditContacts(lodge.contacts ? [...lodge.contacts] : [{ name: '', phone: '', role: 'Lodge Contact' }]);
+    setShowEdit(true);
+  };
+
+  async function saveLodge() {
+    if (!editForm.name.trim() || !lodge) return;
+    setSaving(true);
+    
+    const activeContacts = editContacts.filter(c => c.name.trim() || c.phone.trim() || c.role.trim());
+
+    await supabase
+      .from('lodges')
+      .update({
+        name: editForm.name.trim(),
+        address: editForm.address.trim() || null,
+        maps_link: editForm.maps_link.trim() || null,
+        contacts: activeContacts,
+      })
+      .eq('id', lodge.id);
+
+    setShowEdit(false);
+    setSaving(false);
+    load();
+  }
+
+  async function deleteLodge() {
+    if (!lodge) return;
+    if (window.confirm(`Are you sure you want to delete ${lodge.name}? This will delete all rooms and assignments in this lodge.`)) {
+      setSaving(true);
+      await supabase.from('lodges').delete().eq('id', lodge.id);
+      goBack();
+    }
+  }
 
   async function addRoom() {
     if (!form.room_no.trim()) return;
@@ -72,6 +118,20 @@ export function LodgeDetailScreen({ lodgeId }: { lodgeId: string }) {
     setSaving(false);
     load();
   }
+
+  const addContactField = () => {
+    setEditContacts([...editContacts, { name: '', phone: '', role: 'Lodge Contact' }]);
+  };
+
+  const removeContactField = (index: number) => {
+    setEditContacts(editContacts.filter((_, i) => i !== index));
+  };
+
+  const updateContact = (index: number, field: keyof Contact, value: string) => {
+    const updated = [...editContacts];
+    updated[index][field] = value;
+    setEditContacts(updated);
+  };
 
   const floors = [...new Set(rooms.map(r => r.floor ?? 'Other'))];
 
@@ -94,13 +154,18 @@ export function LodgeDetailScreen({ lodgeId }: { lodgeId: string }) {
         <button className="back-btn" onClick={goBack}>
           <ChevronLeft className="w-[22px] h-[22px]" />
         </button>
-        <h1>
+        <h1 style={{ flex: 1 }}>
           {lodge?.name ?? '…'}
           {lodge && <span className="subtitle">{rooms.length} rooms</span>}
         </h1>
-        <button onClick={() => setShowAdd(true)} className="topbar-action">
-          + Room
-        </button>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button onClick={handleOpenEdit} className="topbar-action">
+            Edit
+          </button>
+          <button onClick={() => setShowAdd(true)} className="topbar-action">
+            + Room
+          </button>
+        </div>
       </div>
 
       <div className="scroll">
@@ -194,6 +259,135 @@ export function LodgeDetailScreen({ lodgeId }: { lodgeId: string }) {
           </>
         )}
       </div>
+
+      {/* Edit Lodge Modal */}
+      {showEdit && (
+        <div className="modal-overlay open" onClick={() => setShowEdit(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-handle" />
+            <div className="modal-title">Edit Lodge Details</div>
+            
+            <div className="form-group">
+              <label>Lodge Name *</label>
+              <input
+                type="text"
+                placeholder="e.g. Jothi Lodge"
+                value={editForm.name}
+                onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
+              />
+            </div>
+
+            {/* Dynamic Contacts Section */}
+            <div style={{ marginBottom: '16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)', flex: 1, margin: 0 }}>Contacts</label>
+                <button 
+                  type="button" 
+                  onClick={addContactField}
+                  className="btn btn-sm btn-secondary" 
+                  style={{ width: 'auto', padding: '4px 10px', fontSize: '12px' }}
+                >
+                  + Add Contact
+                </button>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {editContacts.map((contact, idx) => (
+                  <div key={idx} style={{ background: 'var(--bg)', padding: '12px', borderRadius: '10px', border: '1px solid var(--border)', position: 'relative' }}>
+                    {editContacts.length > 1 && (
+                      <button 
+                        type="button"
+                        onClick={() => removeContactField(idx)}
+                        style={{ position: 'absolute', right: '8px', top: '8px', border: 'none', background: 'none', color: 'var(--red)', cursor: 'pointer', padding: '4px' }}
+                      >
+                        <Trash className="w-4 h-4" />
+                      </button>
+                    )}
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px' }}>Name</label>
+                          <input
+                            type="text"
+                            placeholder="Contact Name"
+                            value={contact.name}
+                            onChange={e => updateContact(idx, 'name', e.target.value)}
+                            style={{ padding: '8px 10px', fontSize: '13px' }}
+                          />
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px' }}>Phone</label>
+                          <input
+                            type="tel"
+                            placeholder="Phone number"
+                            value={contact.phone}
+                            onChange={e => updateContact(idx, 'phone', e.target.value)}
+                            style={{ padding: '8px 10px', fontSize: '13px' }}
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px' }}>Role / Label</label>
+                        <select
+                          value={contact.role}
+                          onChange={e => updateContact(idx, 'role', e.target.value)}
+                          style={{ padding: '8px 10px', fontSize: '13px' }}
+                        >
+                          <option>Lodge Contact</option>
+                          <option>Lodge In-charge</option>
+                          <option>Supervisor</option>
+                          <option>Owner</option>
+                          <option>Manager</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label>Address / Notes</label>
+              <textarea
+                placeholder="Street, landmark…"
+                value={editForm.address}
+                onChange={e => setEditForm(f => ({ ...f, address: e.target.value }))}
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Google Maps Link</label>
+              <input
+                type="url"
+                placeholder="Paste maps.google.com or goo.gl link…"
+                value={editForm.maps_link}
+                onChange={e => setEditForm(f => ({ ...f, maps_link: e.target.value }))}
+              />
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <button
+                onClick={saveLodge}
+                disabled={saving || !editForm.name.trim()}
+                className="btn btn-primary"
+              >
+                Save Changes
+              </button>
+              <button
+                onClick={deleteLodge}
+                disabled={saving}
+                className="btn btn-danger"
+              >
+                Delete Lodge
+              </button>
+              <button className="btn btn-ghost" onClick={() => setShowEdit(false)}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Add Room Modal */}
       {showAdd && (
