@@ -8,6 +8,9 @@ interface Lodge {
   name: string;
   address: string | null;
   maps_link: string | null;
+  lodge_contact: string | null;
+  incharge_name: string | null;
+  incharge_contact: string | null;
   rooms: { id: string; room_guests: { id: string }[] }[];
 }
 
@@ -16,13 +19,13 @@ export function LodgesScreen() {
   const [lodges, setLodges] = useState<Lodge[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
-  const [form, setForm] = useState({ name: '', address: '', maps_link: '' });
+  const [form, setForm] = useState({ name: '', address: '', maps_link: '', lodge_contact: '', incharge_name: '', incharge_contact: '' });
   const [saving, setSaving] = useState(false);
 
   async function load() {
     const { data } = await supabase
       .from('lodges')
-      .select('id, name, address, maps_link, rooms(id, room_guests(id))')
+      .select('id, name, address, maps_link, lodge_contact, incharge_name, incharge_contact, rooms(id, room_guests(id))')
       .order('name');
     setLodges((data ?? []) as Lodge[]);
     setLoading(false);
@@ -37,8 +40,11 @@ export function LodgesScreen() {
       name: form.name.trim(),
       address: form.address.trim() || null,
       maps_link: form.maps_link.trim() || null,
+      lodge_contact: form.lodge_contact.trim() || null,
+      incharge_name: form.incharge_name.trim() || null,
+      incharge_contact: form.incharge_contact.trim() || null,
     });
-    setForm({ name: '', address: '', maps_link: '' });
+    setForm({ name: '', address: '', maps_link: '', lodge_contact: '', incharge_name: '', incharge_contact: '' });
     setShowAdd(false);
     setSaving(false);
     load();
@@ -115,8 +121,9 @@ export function LodgesScreen() {
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-handle" />
             <div className="modal-title">Add Lodge</div>
+            
             <div className="form-group">
-              <label>Lodge Name</label>
+              <label>Lodge Name *</label>
               <input
                 type="text"
                 placeholder="e.g. Jothi Lodge"
@@ -124,6 +131,38 @@ export function LodgesScreen() {
                 onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
               />
             </div>
+
+            <div className="form-group">
+              <label>Lodge Contact Number</label>
+              <input
+                type="tel"
+                placeholder="e.g. +91 98765 43210"
+                value={form.lodge_contact}
+                onChange={e => setForm(f => ({ ...f, lodge_contact: e.target.value }))}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3" style={{ marginBottom: '16px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px' }}>In-charge Name</label>
+                <input
+                  type="text"
+                  placeholder="In-charge name"
+                  value={form.incharge_name}
+                  onChange={e => setForm(f => ({ ...f, incharge_name: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px' }}>In-charge Contact</label>
+                <input
+                  type="tel"
+                  placeholder="In-charge phone"
+                  value={form.incharge_contact}
+                  onChange={e => setForm(f => ({ ...f, incharge_contact: e.target.value }))}
+                />
+              </div>
+            </div>
+
             <div className="form-group">
               <label>Address / Notes</label>
               <textarea
@@ -132,6 +171,7 @@ export function LodgesScreen() {
                 onChange={e => setForm(f => ({ ...f, address: e.target.value }))}
               />
             </div>
+
             <div className="form-group">
               <label>Google Maps Link</label>
               <input
@@ -144,6 +184,7 @@ export function LodgesScreen() {
                 Open Google Maps → Share → Copy link, then paste it here.
               </div>
             </div>
+
             <button
               onClick={addLodge}
               disabled={saving || !form.name.trim()}
