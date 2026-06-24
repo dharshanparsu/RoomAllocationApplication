@@ -30,6 +30,7 @@ interface RoomData {
     id: string;
     keys_given: string;
     ac_remote_given?: string;
+    extra_bed_status?: string;
     guest: {
       id: string;
       name: string;
@@ -79,7 +80,7 @@ export function RoomDetailScreen({ roomId }: { roomId: string }) {
       .select(`
         id, room_no, room_type, bed_config, floor, category, extra_bed, notes,
         lodge:lodges(id, name, ac_remote_required),
-        room_guests(id, keys_given, ac_remote_given, guest:guests(id, name, phone, party_size, hometown, side, notes, sub_guests))
+        room_guests(id, keys_given, ac_remote_given, extra_bed_status, guest:guests(id, name, phone, party_size, hometown, side, notes, sub_guests))
       `)
       .eq('id', roomId)
       .single();
@@ -109,6 +110,7 @@ export function RoomDetailScreen({ roomId }: { roomId: string }) {
   const guest = rg?.guest;
   const currentKey = rg?.keys_given ?? 'not_given';
   const currentRemote = rg?.ac_remote_given ?? 'not_given';
+  const currentExtraBed = rg?.extra_bed_status ?? 'not_required';
 
   async function setKeyStatus(status: string) {
     if (!rg || keyUpdating) return;
@@ -122,6 +124,14 @@ export function RoomDetailScreen({ roomId }: { roomId: string }) {
     if (!rg || keyUpdating) return;
     setKeyUpdating(true);
     await supabase.from('room_guests').update({ ac_remote_given: status }).eq('id', rg.id);
+    await load();
+    setKeyUpdating(false);
+  }
+
+  async function setExtraBedStatus(status: string) {
+    if (!rg || keyUpdating) return;
+    setKeyUpdating(true);
+    await supabase.from('room_guests').update({ extra_bed_status: status }).eq('id', rg.id);
     await load();
     setKeyUpdating(false);
   }
@@ -300,7 +310,7 @@ export function RoomDetailScreen({ roomId }: { roomId: string }) {
 
             {/* AC Remote status bar */}
             {room?.lodge?.ac_remote_required && (
-              <div className="key-status" style={{ paddingTop: '0px', paddingBottom: '12px' }}>
+              <div className="key-status" style={{ paddingTop: '0px', paddingBottom: room?.extra_bed ? '4px' : '12px' }}>
                 <div
                   className={`key-pill ${currentRemote === 'not_given' || currentRemote === 'none' ? 'active-orange' : ''}`}
                   onClick={() => rg && setRemoteStatus('not_given')}
@@ -324,6 +334,36 @@ export function RoomDetailScreen({ roomId }: { roomId: string }) {
                 >
                   <CheckCircle2 className="w-3.5 h-3.5" />
                   Collected
+                </div>
+              </div>
+            )}
+
+            {/* Extra Bed status bar */}
+            {room?.extra_bed && (
+              <div className="key-status" style={{ paddingTop: '0px', paddingBottom: '12px' }}>
+                <div
+                  className={`key-pill ${currentExtraBed === 'not_required' || currentExtraBed === 'none' ? 'active-green' : ''}`}
+                  onClick={() => rg && setExtraBedStatus('not_required')}
+                  style={{ cursor: rg ? 'pointer' : 'default', opacity: rg ? 1 : 0.5 }}
+                >
+                  <XCircle className="w-3.5 h-3.5" />
+                  No Extra Bed
+                </div>
+                <div
+                  className={`key-pill ${currentExtraBed === 'procured' ? 'active-orange' : ''}`}
+                  onClick={() => rg && setExtraBedStatus('procured')}
+                  style={{ cursor: rg ? 'pointer' : 'default', opacity: rg ? 1 : 0.5 }}
+                >
+                  <Key className="w-3.5 h-3.5" />
+                  Bed Procured
+                </div>
+                <div
+                  className={`key-pill ${currentExtraBed === 'returned' ? 'active-green' : ''}`}
+                  onClick={() => rg && setExtraBedStatus('returned')}
+                  style={{ cursor: rg ? 'pointer' : 'default', opacity: rg ? 1 : 0.5 }}
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  Bed Returned
                 </div>
               </div>
             )}

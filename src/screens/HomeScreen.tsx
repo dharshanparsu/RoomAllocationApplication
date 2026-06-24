@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Building2, Key, Lock, ChevronRight, Settings, Wind } from 'lucide-react';
+import { Building2, Key, Lock, ChevronRight, Settings, Wind, Bed } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useNavigation } from '../contexts/NavigationContext';
 
@@ -7,13 +7,14 @@ interface RoomGuest {
   id: string;
   keys_given: string;
   ac_remote_given?: string | null;
+  extra_bed_status?: string | null;
 }
 
 interface Lodge {
   id: string;
   name: string;
   ac_remote_required?: boolean;
-  rooms: { id: string; room_guests: RoomGuest[] }[];
+  rooms: { id: string; extra_bed: boolean; room_guests: RoomGuest[] }[];
 }
 
 export function HomeScreen() {
@@ -24,11 +25,14 @@ export function HomeScreen() {
   const [totalAcRooms, setTotalAcRooms] = useState(0);
   const [acGiven, setAcGiven] = useState(0);
   const [acCollected, setAcCollected] = useState(0);
+  const [totalExtraBeds, setTotalExtraBeds] = useState(0);
+  const [extraBedsProcured, setExtraBedsProcured] = useState(0);
+  const [extraBedsReturned, setExtraBedsReturned] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
-      const lodgesRes = await supabase.from('lodges').select('id, name, ac_remote_required, rooms(id, room_guests(id, keys_given, ac_remote_given))');
+      const lodgesRes = await supabase.from('lodges').select('id, name, ac_remote_required, rooms(id, extra_bed, room_guests(id, keys_given, ac_remote_given, extra_bed_status))');
       
       const data = (lodgesRes.data ?? []) as Lodge[];
       setLodges(data);
@@ -38,6 +42,9 @@ export function HomeScreen() {
       let totalAc = 0;
       let acG = 0;
       let acC = 0;
+      let totalBeds = 0;
+      let bedsP = 0;
+      let bedsR = 0;
 
       data.forEach(lodge => {
         lodge.rooms?.forEach(room => {
@@ -57,9 +64,18 @@ export function HomeScreen() {
                 acC++;
               }
             }
+            if (rg.extra_bed_status === 'procured' || rg.extra_bed_status === 'returned') {
+              bedsP++;
+            }
+            if (rg.extra_bed_status === 'returned') {
+              bedsR++;
+            }
           }
           if (lodge.ac_remote_required) {
             totalAc++;
+          }
+          if (room.extra_bed) {
+            totalBeds++;
           }
         });
       });
@@ -69,6 +85,9 @@ export function HomeScreen() {
       setTotalAcRooms(totalAc);
       setAcGiven(acG);
       setAcCollected(acC);
+      setTotalExtraBeds(totalBeds);
+      setExtraBedsProcured(bedsP);
+      setExtraBedsReturned(bedsR);
       setLoading(false);
     }
     load();
@@ -213,6 +232,42 @@ export function HomeScreen() {
                     </div>
                     <span className="badge green">
                       {acGiven > 0 ? Math.round((acCollected / acGiven) * 100) : 0}%
+                    </span>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {totalExtraBeds > 0 && (
+              <>
+                <div className="section-header">Extra Bed Status</div>
+                <div className="card">
+                  <div className="list-row" style={{ cursor: 'default' }}>
+                    <div className="row-icon orange">
+                      <Bed className="w-5 h-5" style={{ color: 'var(--orange)' }} />
+                    </div>
+                    <div className="row-body">
+                      <div className="row-title">Extra Beds Procured</div>
+                      <div className="row-sub">
+                        {extraBedsProcured} of {totalExtraBeds} eligible rooms
+                      </div>
+                    </div>
+                    <span className="badge orange">
+                      {totalExtraBeds > 0 ? Math.round((extraBedsProcured / totalExtraBeds) * 100) : 0}%
+                    </span>
+                  </div>
+                  <div className="list-row" style={{ cursor: 'default' }}>
+                    <div className="row-icon green">
+                      <Lock className="w-5 h-5" style={{ color: 'var(--green)' }} />
+                    </div>
+                    <div className="row-body">
+                      <div className="row-title">Extra Beds Returned</div>
+                      <div className="row-sub">
+                        {extraBedsReturned} of {extraBedsProcured} procured
+                      </div>
+                    </div>
+                    <span className="badge green">
+                      {extraBedsProcured > 0 ? Math.round((extraBedsReturned / extraBedsProcured) * 100) : 0}%
                     </span>
                   </div>
                 </div>

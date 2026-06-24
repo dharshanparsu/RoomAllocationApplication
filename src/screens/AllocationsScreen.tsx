@@ -22,6 +22,7 @@ interface RoomGuest {
   id: string;
   keys_given: string;
   ac_remote_given?: string | null;
+  extra_bed_status?: string | null;
   guest: Guest | null;
 }
 
@@ -61,7 +62,7 @@ export function AllocationsScreen() {
       supabase.from('rooms').select(`
         id, room_no, room_type, bed_config, floor, category, extra_bed, notes,
         lodge:lodges(id, name, ac_remote_required),
-        room_guests(id, keys_given, ac_remote_given, guest:guests(id, name, phone, party_size, hometown, side, notes, sub_guests))
+        room_guests(id, keys_given, ac_remote_given, extra_bed_status, guest:guests(id, name, phone, party_size, hometown, side, notes, sub_guests))
       `),
       supabase.from('lodges').select('id, name').order('name'),
     ]);
@@ -124,6 +125,29 @@ export function AllocationsScreen() {
           const updatedGuests = room.room_guests.map(rg => {
             if (rg.id === roomGuestId) {
               return { ...rg, ac_remote_given: newStatus };
+            }
+            return rg;
+          });
+          return { ...room, room_guests: updatedGuests };
+        })
+      );
+    }
+    setUpdatingGuestId(null);
+  }
+
+  async function updateExtraBedStatus(roomGuestId: string, newStatus: string) {
+    setUpdatingGuestId(roomGuestId);
+    const { error } = await supabase
+      .from('room_guests')
+      .update({ extra_bed_status: newStatus })
+      .eq('id', roomGuestId);
+
+    if (!error) {
+      setRooms(prevRooms =>
+        prevRooms.map(room => {
+          const updatedGuests = room.room_guests.map(rg => {
+            if (rg.id === roomGuestId) {
+              return { ...rg, extra_bed_status: newStatus };
             }
             return rg;
           });
@@ -518,6 +542,82 @@ export function AllocationsScreen() {
                               >
                                 <CheckCircle2 className="w-3.5 h-3.5" />
                                 Collected
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Quick Extra Bed Status control bar */}
+                        {room.extra_bed && (
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg)', padding: '6px 10px', borderRadius: '8px', marginTop: '6px' }}>
+                            <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                              Quick Extra Bed:
+                            </span>
+                            <div style={{ display: 'flex', gap: '6px' }}>
+                              <button
+                                disabled={updatingGuestId === activeRG.id}
+                                onClick={() => updateExtraBedStatus(activeRG.id, 'not_required')}
+                                style={{
+                                  border: '1px solid var(--border)',
+                                  background: activeRG.extra_bed_status === 'not_required' || !activeRG.extra_bed_status || activeRG.extra_bed_status === 'none' ? 'var(--green-bg)' : 'var(--white)',
+                                  borderColor: activeRG.extra_bed_status === 'not_required' || !activeRG.extra_bed_status || activeRG.extra_bed_status === 'none' ? '#86efac' : 'var(--border)',
+                                  color: activeRG.extra_bed_status === 'not_required' || !activeRG.extra_bed_status || activeRG.extra_bed_status === 'none' ? 'var(--green)' : 'var(--text-muted)',
+                                  padding: '4px 8px',
+                                  fontSize: '11px',
+                                  fontWeight: 600,
+                                  borderRadius: '6px',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '3px'
+                                }}
+                              >
+                                <XCircle className="w-3.5 h-3.5" />
+                                N/A
+                              </button>
+                              
+                              <button
+                                disabled={updatingGuestId === activeRG.id}
+                                onClick={() => updateExtraBedStatus(activeRG.id, 'procured')}
+                                style={{
+                                  border: '1px solid var(--border)',
+                                  background: activeRG.extra_bed_status === 'procured' ? 'var(--orange-bg)' : 'var(--white)',
+                                  borderColor: activeRG.extra_bed_status === 'procured' ? '#fcd34d' : 'var(--border)',
+                                  color: activeRG.extra_bed_status === 'procured' ? 'var(--orange)' : 'var(--text-muted)',
+                                  padding: '4px 8px',
+                                  fontSize: '11px',
+                                  fontWeight: 600,
+                                  borderRadius: '6px',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '3px'
+                                }}
+                              >
+                                <Key className="w-3.5 h-3.5" />
+                                Procured
+                              </button>
+
+                              <button
+                                disabled={updatingGuestId === activeRG.id}
+                                onClick={() => updateExtraBedStatus(activeRG.id, 'returned')}
+                                style={{
+                                  border: '1px solid var(--border)',
+                                  background: activeRG.extra_bed_status === 'returned' ? 'var(--green-bg)' : 'var(--white)',
+                                  borderColor: activeRG.extra_bed_status === 'returned' ? '#86efac' : 'var(--border)',
+                                  color: activeRG.extra_bed_status === 'returned' ? 'var(--green)' : 'var(--text-muted)',
+                                  padding: '4px 8px',
+                                  fontSize: '11px',
+                                  fontWeight: 600,
+                                  borderRadius: '6px',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '3px'
+                                }}
+                              >
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                Returned
                               </button>
                             </div>
                           </div>
