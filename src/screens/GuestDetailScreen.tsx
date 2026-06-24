@@ -121,7 +121,10 @@ export function GuestDetailScreen({ guestId }: { guestId: string }) {
         <button className="back-btn" onClick={goBack}>
           <ChevronLeft className="w-[22px] h-[22px]" />
         </button>
-        <h1>Guest Details</h1>
+        <h1 style={{ flex: 1 }}>Guest Details</h1>
+        <button onClick={save} disabled={saving} className="topbar-action">
+          {saved ? 'Saved!' : 'Save'}
+        </button>
       </div>
 
       <div className="scroll">

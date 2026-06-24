@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ChevronLeft, Key, CheckCircle2, Phone, UserCheck, Save, UserX, Trash } from 'lucide-react';
+import { ChevronLeft, Key, CheckCircle2, Phone, UserCheck, Save, UserX, Trash, Search } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useNavigation } from '../contexts/NavigationContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -44,7 +44,7 @@ interface RoomData {
 }
 
 export function RoomDetailScreen({ roomId }: { roomId: string }) {
-  const { goBack, navigate } = useNavigation();
+  const { goBack } = useNavigation();
   const { isAdmin } = useAuth();
   const [room, setRoom] = useState<RoomData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -53,6 +53,11 @@ export function RoomDetailScreen({ roomId }: { roomId: string }) {
   const [saving, setSaving] = useState(false);
   const [keyUpdating, setKeyUpdating] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  // Assign Guest Modal State
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [allGuests, setAllGuests] = useState<any[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
 
   async function load() {
     const { data } = await supabase
@@ -127,6 +132,40 @@ export function RoomDetailScreen({ roomId }: { roomId: string }) {
     load();
   }
 
+  // Fetch guests for assignment
+  async function handleOpenAssign() {
+    const { data } = await supabase
+      .from('guests')
+      .select('id, name, phone, party_size, room_guests(room:rooms(room_no, lodge:lodges(name)))')
+      .order('name');
+    setAllGuests(data ?? []);
+    setSearchQuery('');
+    setShowAssignModal(true);
+  }
+
+  async function assignGuestToRoom(guestId: string) {
+    setSaving(true);
+    
+    // 1. Delete any existing assignment for this room first (if any)
+    if (rg) {
+      await supabase.from('room_guests').delete().eq('room_id', roomId);
+    }
+    
+    // 2. Also delete any existing assignment of the selected guest to other rooms
+    await supabase.from('room_guests').delete().eq('guest_id', guestId);
+    
+    // 3. Create the new assignment
+    await supabase.from('room_guests').insert({
+      room_id: roomId,
+      guest_id: guestId,
+      keys_given: 'not_given'
+    });
+    
+    setShowAssignModal(false);
+    setSaving(false);
+    load();
+  }
+
   const addSubGuestField = () => {
     setSubGuests([...subGuests, { name: '' }]);
   };
@@ -147,12 +186,17 @@ export function RoomDetailScreen({ roomId }: { roomId: string }) {
         <button className="back-btn" onClick={goBack}>
           <ChevronLeft className="w-[22px] h-[22px]" />
         </button>
-        <h1>
+        <h1 style={{ flex: 1 }}>
           Room {room?.room_no || '…'}
           <span className="subtitle">
             {room?.lodge?.name || '…'} · {room?.floor || '…'}
           </span>
         </h1>
+        {guest && (
+          <button onClick={saveGuest} disabled={saving} className="topbar-action">
+            {saved ? 'Saved!' : 'Save'}
+          </button>
+        )}
       </div>
 
       <div className="scroll">
@@ -226,7 +270,7 @@ export function RoomDetailScreen({ roomId }: { roomId: string }) {
                 <button
                   className="btn btn-sm btn-secondary"
                   style={{ width: 'auto' }}
-                  onClick={() => navigate({ name: 'guests' })}
+                  onClick={handleOpenAssign}
                 >
                   <UserCheck className="w-3.5 h-3.5" /> {guest ? 'Change guest' : 'Assign guest'}
                 </button>
@@ -348,6 +392,53 @@ export function RoomDetailScreen({ roomId }: { roomId: string }) {
           </>
         )}
       </div>
+
+      {/* Assign Guest Modal */}
+      {showAssignModal && (
+        <div className="modal-overlay open" onClick={() => setShowAssignModal(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-handle" />
+            <div className="modal-title">Assign Guest to Room</div>
+            <div className="form-group">
+              <div className="search-wrap">
+                <span className="search-icon"><Search className="w-4 h-4" /></span>
+                <input
+                  type="search"
+                  placeholder="Search guest…"
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="card" style={{ margin: '0 0 16px', maxHeight: '300px', overflowY: 'auto' }}>
+              {allGuests
+                .filter(g => g.name.toLowerCase().includes(searchQuery.toLowerCase()))
+                .map(g => {
+                  const assignedRoom = g.room_guests?.[0]?.room;
+                  const isCurrent = guest?.id === g.id;
+                  return (
+                    <div
+                      key={g.id}
+                      onClick={() => assignGuestToRoom(g.id)}
+                      className="list-row"
+                    >
+                      <div className="row-body">
+                        <div className="row-title">{g.name}</div>
+                        <div className="row-sub">
+                          {g.phone || 'No phone'} · {g.party_size || 1} persons · {assignedRoom ? `Room ${assignedRoom.room_no} (${assignedRoom.lodge?.name})` : 'Unassigned'}
+                        </div>
+                      </div>
+                      <span className={`badge ${isCurrent ? 'green' : assignedRoom ? 'blue' : 'gray'}`}>
+                        {isCurrent ? 'This room' : assignedRoom ? 'Assigned' : 'Unassigned'}
+                      </span>
+                    </div>
+                  );
+                })}
+            </div>
+            <button className="btn btn-ghost" onClick={() => setShowAssignModal(false)}>Cancel</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

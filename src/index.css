@@ -75,6 +75,10 @@ svg.lucide { display: block; flex-shrink: 0; }
 .search-icon svg.lucide { width: 16px; height: 16px; color: var(--text-muted); }
 .badge svg.lucide { width: 11px; height: 11px; }
 
+/* ── Screens ── */
+.screen { display: none; flex-direction: column; flex: 1; overflow: hidden; }
+.screen.active { display: flex; }
+
 /* ── Top bar ── */
 .topbar {
   background: var(--white);
@@ -110,7 +114,7 @@ svg.lucide { display: block; flex-shrink: 0; }
 }
 
 /* ── Scroll content ── */
-.scroll { flex: 1; overflow-y: auto; padding-bottom: 80px; }
+.scroll { flex: 1; overflow-y: auto; padding-bottom: 100px; }
 
 /* ── Bottom nav ── */
 .bottom-nav {
