@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { ChevronLeft, Navigation, Key, Plus, Phone, Trash } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useNavigation } from '../contexts/NavigationContext';
+import { useAuth } from '../contexts/AuthContext';
 
 interface Guest { id: string; name: string }
 interface RoomGuest { id: string; keys_given: string; guest: Guest | null }
@@ -34,6 +35,7 @@ const FLOORS = ['Ground Floor', 'First Floor', 'Second Floor', 'Third Floor'];
 
 export function LodgeDetailScreen({ lodgeId }: { lodgeId: string }) {
   const { goBack, navigate } = useNavigation();
+  const { isAdmin } = useAuth();
   const [lodge, setLodge] = useState<Lodge | null>(null);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
@@ -97,10 +99,14 @@ export function LodgeDetailScreen({ lodgeId }: { lodgeId: string }) {
 
   async function deleteLodge() {
     if (!lodge) return;
-    if (window.confirm(`Are you sure you want to delete ${lodge.name}? This will delete all rooms and assignments in this lodge.`)) {
-      setSaving(true);
-      await supabase.from('lodges').delete().eq('id', lodge.id);
-      goBack();
+    const confirm1 = window.confirm(`Are you sure you want to delete ${lodge.name}?`);
+    if (confirm1) {
+      const confirm2 = window.confirm(`WARNING: This will permanently delete all rooms and guest allocations associated with ${lodge.name}. This action cannot be undone. Are you absolutely sure?`);
+      if (confirm2) {
+        setSaving(true);
+        await supabase.from('lodges').delete().eq('id', lodge.id);
+        goBack();
+      }
     }
   }
 
@@ -390,13 +396,15 @@ export function LodgeDetailScreen({ lodgeId }: { lodgeId: string }) {
               >
                 Save Changes
               </button>
-              <button
-                onClick={deleteLodge}
-                disabled={saving}
-                className="btn btn-danger"
-              >
-                Delete Lodge
-              </button>
+              {isAdmin && (
+                <button
+                  onClick={deleteLodge}
+                  disabled={saving}
+                  className="btn btn-danger"
+                >
+                  Delete Lodge
+                </button>
+              )}
               <button className="btn btn-ghost" onClick={() => setShowEdit(false)}>
                 Cancel
               </button>
