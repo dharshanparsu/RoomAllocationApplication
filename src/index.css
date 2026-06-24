@@ -308,6 +308,35 @@ input:checked + .slider:before { transform: translateX(18px); }
   padding: 40px 32px;
   background: linear-gradient(160deg, var(--blue-light) 0%, white 60%);
 }
+/* ── Modal ── */
+.modal-overlay {
+  position: absolute; inset: 0;
+  background: rgba(0,0,0,0.4);
+  z-index: 100;
+  display: none; align-items: flex-end; justify-content: center;
+}
+.modal-overlay.open {
+  display: flex;
+}
+.modal {
+  background: white;
+  border-radius: 20px 20px 0 0;
+  width: 100%; max-width: 430px;
+  padding: 24px;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+.modal-handle {
+  width: 36px; height: 4px;
+  background: var(--border); border-radius: 2px;
+  margin: 0 auto 20px;
+}
+.modal-title {
+  font-size: 17px;
+  font-weight: 700;
+  margin-bottom: 20px;
+  color: var(--text);
+}
 .login-logo {
   width: 72px; height: 72px;
   background: var(--blue); border-radius: 20px;

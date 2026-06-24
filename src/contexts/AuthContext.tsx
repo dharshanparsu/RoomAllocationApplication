@@ -30,12 +30,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const loadProfile = useCallback(async (userId: string) => {
-    const { data } = await supabase
-      .from('users')
-      .select('id, email, role, status')
-      .eq('id', userId)
-      .maybeSingle();
-    setProfile((data as Profile) ?? null);
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, email, role, status')
+        .eq('id', userId)
+        .maybeSingle();
+      if (error) {
+        console.error('Error fetching profile from users table:', error);
+        setProfile(null);
+      } else {
+        setProfile((data as Profile) ?? null);
+      }
+    } catch (err) {
+      console.error('Unhandled error in loadProfile:', err);
+      setProfile(null);
+    }
   }, []);
 
   useEffect(() => {
@@ -47,7 +57,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
-      if (session?.user) await loadProfile(session.user.id);
+      if (session?.user) {
+        try {
+          await loadProfile(session.user.id);
+        } catch (err) {
+          console.error('Error loading profile during session init:', err);
+        }
+      }
+      setLoading(false);
+    }).catch(err => {
+      console.error('Error getting session:', err);
       setLoading(false);
     });
 
@@ -56,8 +75,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
-      if (session?.user) await loadProfile(session.user.id);
-      else setProfile(null);
+      if (session?.user) {
+        try {
+          await loadProfile(session.user.id);
+        } catch (err) {
+          console.error('Error loading profile during auth state change:', err);
+        }
+      } else {
+        setProfile(null);
+      }
       setLoading(false);
     });
 
@@ -65,11 +91,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [loadProfile]);
 
   const refreshProfile = useCallback(async () => {
-    if (user) await loadProfile(user.id);
+    if (user) {
+      try {
+        await loadProfile(user.id);
+      } catch (err) {
+        console.error('Error refreshing profile:', err);
+      }
+    }
   }, [user, loadProfile]);
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    try {
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.error('Error during signout:', err);
+    }
     setProfile(null);
   };
 
