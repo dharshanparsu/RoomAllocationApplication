@@ -282,10 +282,17 @@ export function RoomDetailScreen({ roomId }: { roomId: string }) {
         <button className="back-btn" onClick={goBack}>
           <ChevronLeft className="w-[22px] h-[22px]" />
         </button>
-        <h1 style={{ flex: 1 }}>
-          Room {room?.room_no || '…'}
-          <span className="subtitle">
-            {room?.lodge?.name || '…'} · {room?.floor || '…'}
+        <h1 style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span>Room {room?.room_no || '…'}</span>
+            {room?.lodge?.name && (
+              <span className="badge blue" style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', padding: '2px 8px', background: 'var(--blue-light)', color: 'var(--blue)' }}>
+                {room.lodge.name}
+              </span>
+            )}
+          </div>
+          <span className="subtitle" style={{ marginTop: '2px' }}>
+            {room?.floor || '…'}
           </span>
         </h1>
         {guest && (
