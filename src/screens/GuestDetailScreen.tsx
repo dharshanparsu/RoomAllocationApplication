@@ -42,10 +42,30 @@ export function GuestDetailScreen({ guestId }: { guestId: string }) {
   const { goBack, navigate } = useNavigation();
   const [guest, setGuest] = useState<GuestData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState<GuestForm>({ name: '', phone: '', party_size: '', hometown: '', side: 'bride', notes: '' });
+  const [form, setForm] = useState<GuestForm>({ name: '', phone: '', party_size: '', hometown: '', side: 'groom', notes: '' });
   const [subGuests, setSubGuests] = useState<SubGuest[]>([]);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [userInteractedSide, setUserInteractedSide] = useState(false);
+
+  useEffect(() => {
+    if (userInteractedSide) return;
+    const nameLower = form.name.toLowerCase();
+    const hometownLower = form.hometown.toLowerCase();
+    const notesLower = form.notes.toLowerCase();
+    const mentionsBride = 
+      nameLower.includes('madanapalle') || 
+      nameLower.includes('ashok') || 
+      nameLower.includes('amulya') ||
+      hometownLower.includes('madanapalle') || 
+      hometownLower.includes('ashok') || 
+      hometownLower.includes('amulya') ||
+      notesLower.includes('madanapalle') || 
+      notesLower.includes('ashok') || 
+      notesLower.includes('amulya');
+
+    setForm(f => ({ ...f, side: mentionsBride ? 'bride' : 'groom' }));
+  }, [form.name, form.hometown, form.notes, userInteractedSide]);
 
   async function load() {
     const { data } = await supabase
@@ -64,9 +84,10 @@ export function GuestDetailScreen({ guestId }: { guestId: string }) {
         phone: g.phone ?? '',
         party_size: g.party_size?.toString() ?? '',
         hometown: g.hometown ?? '',
-        side: g.side ?? 'bride',
+        side: g.side ?? 'groom',
         notes: g.notes ?? '',
       });
+      setUserInteractedSide(true);
       setSubGuests(g.sub_guests ? [...g.sub_guests] : []);
     }
     setLoading(false);
@@ -216,7 +237,10 @@ export function GuestDetailScreen({ guestId }: { guestId: string }) {
                 <label>Side</label>
                 <select
                   value={form.side}
-                  onChange={e => setForm(f => ({ ...f, side: e.target.value }))}
+                  onChange={e => {
+                    setForm(f => ({ ...f, side: e.target.value }));
+                    setUserInteractedSide(true);
+                  }}
                 >
                   <option value="bride">Bride's side</option>
                   <option value="groom">Groom's side</option>

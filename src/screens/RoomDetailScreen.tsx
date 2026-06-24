@@ -48,14 +48,34 @@ const BED_CONFIGS = ['Double Bed × 1', 'Double Bed × 1, Single Bed × 1', 'Dou
 const FLOORS = ['Ground Floor', 'First Floor', 'Second Floor', 'Third Floor'];
 
 export function RoomDetailScreen({ roomId }: { roomId: string }) {
-  const { goBack } = useNavigation();
+  const { goBack, navigate } = useNavigation();
   const [room, setRoom] = useState<RoomData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [guestForm, setGuestForm] = useState<GuestForm>({ name: '', phone: '', party_size: '', hometown: '', side: 'bride', notes: '' });
+  const [guestForm, setGuestForm] = useState<GuestForm>({ name: '', phone: '', party_size: '', hometown: '', side: 'groom', notes: '' });
   const [subGuests, setSubGuests] = useState<SubGuest[]>([]);
   const [saving, setSaving] = useState(false);
   const [keyUpdating, setKeyUpdating] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [userInteractedSide, setUserInteractedSide] = useState(false);
+
+  useEffect(() => {
+    if (userInteractedSide) return;
+    const nameLower = guestForm.name.toLowerCase();
+    const hometownLower = guestForm.hometown.toLowerCase();
+    const notesLower = guestForm.notes.toLowerCase();
+    const mentionsBride = 
+      nameLower.includes('madanapalle') || 
+      nameLower.includes('ashok') || 
+      nameLower.includes('amulya') ||
+      hometownLower.includes('madanapalle') || 
+      hometownLower.includes('ashok') || 
+      hometownLower.includes('amulya') ||
+      notesLower.includes('madanapalle') || 
+      notesLower.includes('ashok') || 
+      notesLower.includes('amulya');
+
+    setGuestForm(f => ({ ...f, side: mentionsBride ? 'bride' : 'groom' }));
+  }, [guestForm.name, guestForm.hometown, guestForm.notes, userInteractedSide]);
 
   // Assign Guest Modal State
   const [showAssignModal, setShowAssignModal] = useState(false);
@@ -93,12 +113,14 @@ export function RoomDetailScreen({ roomId }: { roomId: string }) {
         phone: g.phone ?? '',
         party_size: g.party_size?.toString() ?? '',
         hometown: g.hometown ?? '',
-        side: g.side ?? 'bride',
+        side: g.side ?? 'groom',
         notes: g.notes ?? '',
       });
+      setUserInteractedSide(true);
       setSubGuests(g.sub_guests ? [...g.sub_guests] : []);
     } else {
-      setGuestForm({ name: '', phone: '', party_size: '', hometown: '', side: 'bride', notes: '' });
+      setGuestForm({ name: '', phone: '', party_size: '', hometown: '', side: 'groom', notes: '' });
+      setUserInteractedSide(false);
       setSubGuests([]);
     }
     setLoading(false);
@@ -410,13 +432,24 @@ export function RoomDetailScreen({ roomId }: { roomId: string }) {
             {/* Guest header */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 16px 4px' }}>
               <div className="section-header" style={{ padding: 0 }}>Guest</div>
-              <button
-                className="btn btn-sm btn-secondary"
-                style={{ width: 'auto' }}
-                onClick={handleOpenAssign}
-              >
-                <UserCheck className="w-3.5 h-3.5" /> {guest ? 'Change guest' : 'Assign guest'}
-              </button>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                {guest && (
+                  <button
+                    className="btn btn-sm btn-secondary"
+                    style={{ width: 'auto' }}
+                    onClick={() => navigate({ name: 'guest', guestId: guest.id })}
+                  >
+                    View Guest
+                  </button>
+                )}
+                <button
+                  className="btn btn-sm btn-secondary"
+                  style={{ width: 'auto' }}
+                  onClick={handleOpenAssign}
+                >
+                  <UserCheck className="w-3.5 h-3.5" /> {guest ? 'Change guest' : 'Assign guest'}
+                </button>
+              </div>
             </div>
 
             {!guest ? (
@@ -497,10 +530,22 @@ export function RoomDetailScreen({ roomId }: { roomId: string }) {
                     />
                   </div>
                   <div className="detail-field">
+                    <label>Hometown / From</label>
+                    <input
+                      type="text"
+                      placeholder="Hometown"
+                      value={guestForm.hometown}
+                      onChange={e => setGuestForm(f => ({ ...f, hometown: e.target.value }))}
+                    />
+                  </div>
+                  <div className="detail-field">
                     <label>Side</label>
                     <select
                       value={guestForm.side}
-                      onChange={e => setGuestForm(f => ({ ...f, side: e.target.value }))}
+                      onChange={e => {
+                        setGuestForm(f => ({ ...f, side: e.target.value }));
+                        setUserInteractedSide(true);
+                      }}
                     >
                       <option value="bride">Bride's side</option>
                       <option value="groom">Groom's side</option>

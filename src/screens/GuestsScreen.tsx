@@ -25,9 +25,25 @@ export function GuestsScreen() {
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
-  const [form, setForm] = useState({ name: '', phone: '', party_size: '', hometown: '', side: 'bride' });
+  const [form, setForm] = useState({ name: '', phone: '', party_size: '', hometown: '', side: 'groom' });
   const [subGuests, setSubGuests] = useState<SubGuest[]>([]);
   const [saving, setSaving] = useState(false);
+  const [userInteractedSide, setUserInteractedSide] = useState(false);
+
+  useEffect(() => {
+    if (userInteractedSide) return;
+    const nameLower = form.name.toLowerCase();
+    const hometownLower = form.hometown.toLowerCase();
+    const mentionsBride = 
+      nameLower.includes('madanapalle') || 
+      nameLower.includes('ashok') || 
+      nameLower.includes('amulya') ||
+      hometownLower.includes('madanapalle') || 
+      hometownLower.includes('ashok') || 
+      hometownLower.includes('amulya');
+
+    setForm(f => ({ ...f, side: mentionsBride ? 'bride' : 'groom' }));
+  }, [form.name, form.hometown, userInteractedSide]);
 
   async function load() {
     const { data } = await supabase
@@ -58,7 +74,8 @@ export function GuestsScreen() {
       side: form.side,
       sub_guests: activeSubGuests,
     });
-    setForm({ name: '', phone: '', party_size: '', hometown: '', side: 'bride' });
+    setForm({ name: '', phone: '', party_size: '', hometown: '', side: 'groom' });
+    setUserInteractedSide(false);
     setSubGuests([]);
     setShowAdd(false);
     setSaving(false);
@@ -96,7 +113,7 @@ export function GuestsScreen() {
     <div className="screen active">
       <div className="topbar">
         <h1>Guests</h1>
-        <button onClick={() => setShowAdd(true)} className="topbar-action">
+        <button onClick={() => { setForm({ name: '', phone: '', party_size: '', hometown: '', side: 'groom' }); setUserInteractedSide(false); setSubGuests([]); setShowAdd(true); }} className="topbar-action">
           + Add
         </button>
       </div>
@@ -252,7 +269,10 @@ export function GuestsScreen() {
               <label>Side</label>
               <select
                 value={form.side}
-                onChange={e => setForm(f => ({ ...f, side: e.target.value }))}
+                onChange={e => {
+                  setForm(f => ({ ...f, side: e.target.value }));
+                  setUserInteractedSide(true);
+                }}
               >
                 <option value="bride">Bride's side</option>
                 <option value="groom">Groom's side</option>
