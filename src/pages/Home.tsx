@@ -1,7 +1,8 @@
-import { Home as HomeIcon, Building2, Users, Settings } from 'lucide-react';
+import { Home as HomeIcon, ListFilter, Building2, Users, Settings } from 'lucide-react';
 import { NavigationProvider, useNavigation } from '../contexts/NavigationContext';
 import type { TabName } from '../contexts/NavigationContext';
 import { HomeScreen } from '../screens/HomeScreen';
+import { AllocationsScreen } from '../screens/AllocationsScreen';
 import { LodgesScreen } from '../screens/LodgesScreen';
 import { LodgeDetailScreen } from '../screens/LodgeDetailScreen';
 import { RoomDetailScreen } from '../screens/RoomDetailScreen';
@@ -11,6 +12,7 @@ import { AdminScreen } from '../screens/AdminScreen';
 
 const TABS: { id: TabName; icon: React.ElementType; label: string }[] = [
   { id: 'home', icon: HomeIcon, label: 'Home' },
+  { id: 'allocations', icon: ListFilter, label: 'Allocations' },
   { id: 'lodges', icon: Building2, label: 'Lodges' },
   { id: 'guests', icon: Users, label: 'Guests' },
   { id: 'admin', icon: Settings, label: 'Admin' },
@@ -30,6 +32,7 @@ function AppShell() {
     <div className="flex-1 flex flex-col overflow-hidden bg-white">
       <div key={screenKey(screen)} className="screen-in flex-1 overflow-hidden">
         {screen.name === 'home' && <HomeScreen />}
+        {screen.name === 'allocations' && <AllocationsScreen />}
         {screen.name === 'lodges' && <LodgesScreen />}
         {screen.name === 'lodge' && <LodgeDetailScreen lodgeId={screen.lodgeId} />}
         {screen.name === 'room' && <RoomDetailScreen roomId={screen.roomId} />}

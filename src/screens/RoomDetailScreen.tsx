@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
-import { ChevronLeft, Key, CheckCircle2, Phone, UserCheck, Save, UserX, Trash, Search } from 'lucide-react';
+import { ChevronLeft, Key, CheckCircle2, Phone, UserCheck, Save, UserX, Trash, Search, XCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useNavigation } from '../contexts/NavigationContext';
-import { useAuth } from '../contexts/AuthContext';
 
 interface GuestForm {
   name: string;
@@ -26,10 +25,11 @@ interface RoomData {
   category: string | null;
   extra_bed: boolean;
   notes: string | null;
-  lodge: { id: string; name: string } | null;
+  lodge: { id: string; name: string; ac_remote_required?: boolean } | null;
   room_guests: {
     id: string;
     keys_given: string;
+    ac_remote_given?: string;
     guest: {
       id: string;
       name: string;
@@ -43,9 +43,11 @@ interface RoomData {
   }[];
 }
 
+const BED_CONFIGS = ['Double Bed × 1', 'Double Bed × 1, Single Bed × 1', 'Double Bed × 2', 'Single Bed × 2', 'Other'];
+const FLOORS = ['Ground Floor', 'First Floor', 'Second Floor', 'Third Floor'];
+
 export function RoomDetailScreen({ roomId }: { roomId: string }) {
   const { goBack } = useNavigation();
-  const { isAdmin } = useAuth();
   const [room, setRoom] = useState<RoomData | null>(null);
   const [loading, setLoading] = useState(true);
   const [guestForm, setGuestForm] = useState<GuestForm>({ name: '', phone: '', party_size: '', hometown: '', side: 'bride', notes: '' });
@@ -59,13 +61,25 @@ export function RoomDetailScreen({ roomId }: { roomId: string }) {
   const [allGuests, setAllGuests] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Edit Room Modal State
+  const [showEditRoomModal, setShowEditRoomModal] = useState(false);
+  const [editRoomForm, setEditRoomForm] = useState({
+    room_no: '',
+    room_type: '',
+    bed_config: BED_CONFIGS[0],
+    floor: FLOORS[0],
+    category: 'TRT',
+    extra_bed: false,
+    notes: '',
+  });
+
   async function load() {
     const { data } = await supabase
       .from('rooms')
       .select(`
         id, room_no, room_type, bed_config, floor, category, extra_bed, notes,
-        lodge:lodges(id, name),
-        room_guests(id, keys_given, guest:guests(id, name, phone, party_size, hometown, side, notes, sub_guests))
+        lodge:lodges(id, name, ac_remote_required),
+        room_guests(id, keys_given, ac_remote_given, guest:guests(id, name, phone, party_size, hometown, side, notes, sub_guests))
       `)
       .eq('id', roomId)
       .single();
@@ -94,11 +108,20 @@ export function RoomDetailScreen({ roomId }: { roomId: string }) {
   const rg = room?.room_guests?.[0];
   const guest = rg?.guest;
   const currentKey = rg?.keys_given ?? 'not_given';
+  const currentRemote = rg?.ac_remote_given ?? 'not_given';
 
   async function setKeyStatus(status: string) {
     if (!rg || keyUpdating) return;
     setKeyUpdating(true);
     await supabase.from('room_guests').update({ keys_given: status }).eq('id', rg.id);
+    await load();
+    setKeyUpdating(false);
+  }
+
+  async function setRemoteStatus(status: string) {
+    if (!rg || keyUpdating) return;
+    setKeyUpdating(true);
+    await supabase.from('room_guests').update({ ac_remote_given: status }).eq('id', rg.id);
     await load();
     setKeyUpdating(false);
   }
@@ -166,6 +189,47 @@ export function RoomDetailScreen({ roomId }: { roomId: string }) {
     load();
   }
 
+  // Edit Room Handlers
+  const handleOpenEditRoom = () => {
+    if (!room) return;
+    setEditRoomForm({
+      room_no: room.room_no || '',
+      room_type: room.room_type || '',
+      bed_config: room.bed_config || BED_CONFIGS[0],
+      floor: room.floor || FLOORS[0],
+      category: room.category || 'TRT',
+      extra_bed: room.extra_bed || false,
+      notes: room.notes || '',
+    });
+    setShowEditRoomModal(true);
+  };
+
+  async function saveRoomDetails() {
+    if (!editRoomForm.room_no.trim() || !room) return;
+    setSaving(true);
+    await supabase.from('rooms').update({
+      room_no: editRoomForm.room_no.trim(),
+      room_type: editRoomForm.room_type.trim() || null,
+      bed_config: editRoomForm.bed_config,
+      floor: editRoomForm.floor,
+      category: editRoomForm.category,
+      extra_bed: editRoomForm.extra_bed,
+      notes: editRoomForm.notes.trim() || null,
+    }).eq('id', roomId);
+    setShowEditRoomModal(false);
+    setSaving(false);
+    load();
+  }
+
+  async function deleteRoom() {
+    if (!room) return;
+    if (window.confirm(`Are you sure you want to delete Room ${room.room_no}?`)) {
+      setSaving(true);
+      await supabase.from('rooms').delete().eq('id', roomId);
+      goBack();
+    }
+  }
+
   const addSubGuestField = () => {
     setSubGuests([...subGuests, { name: '' }]);
   };
@@ -207,7 +271,7 @@ export function RoomDetailScreen({ roomId }: { roomId: string }) {
         ) : (
           <>
             {/* Key status bar */}
-            <div className="key-status">
+            <div className="key-status" style={{ paddingBottom: room?.lodge?.ac_remote_required ? '4px' : '12px' }}>
               <div
                 className={`key-pill ${currentKey === 'not_given' || currentKey === 'none' ? 'active-orange' : ''}`}
                 onClick={() => rg && setKeyStatus('not_given')}
@@ -234,8 +298,48 @@ export function RoomDetailScreen({ roomId }: { roomId: string }) {
               </div>
             </div>
 
-            {/* Room info */}
-            <div className="section-header">Room Info</div>
+            {/* AC Remote status bar */}
+            {room?.lodge?.ac_remote_required && (
+              <div className="key-status" style={{ paddingTop: '0px', paddingBottom: '12px' }}>
+                <div
+                  className={`key-pill ${currentRemote === 'not_given' || currentRemote === 'none' ? 'active-orange' : ''}`}
+                  onClick={() => rg && setRemoteStatus('not_given')}
+                  style={{ cursor: rg ? 'pointer' : 'default', opacity: rg ? 1 : 0.5 }}
+                >
+                  <XCircle className="w-3.5 h-3.5" />
+                  Remote not given
+                </div>
+                <div
+                  className={`key-pill ${currentRemote === 'given' ? 'active-orange' : ''}`}
+                  onClick={() => rg && setRemoteStatus('given')}
+                  style={{ cursor: rg ? 'pointer' : 'default', opacity: rg ? 1 : 0.5 }}
+                >
+                  <Key className="w-3.5 h-3.5" />
+                  Remote given
+                </div>
+                <div
+                  className={`key-pill ${currentRemote === 'collected' || currentRemote === 'back' ? 'active-green' : ''}`}
+                  onClick={() => rg && setRemoteStatus('collected')}
+                  style={{ cursor: rg ? 'pointer' : 'default', opacity: rg ? 1 : 0.5 }}
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  Collected
+                </div>
+              </div>
+            )}
+
+            {/* Room info header with Edit button */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 16px 4px' }}>
+              <div className="section-header" style={{ padding: 0 }}>Room Info</div>
+              <button
+                className="btn btn-sm btn-secondary"
+                style={{ width: 'auto' }}
+                onClick={handleOpenEditRoom}
+              >
+                Edit Room
+              </button>
+            </div>
+
             <div className="card">
               <div className="detail-field">
                 <label>Room Type</label>
@@ -266,15 +370,13 @@ export function RoomDetailScreen({ roomId }: { roomId: string }) {
             {/* Guest header */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 16px 4px' }}>
               <div className="section-header" style={{ padding: 0 }}>Guest</div>
-              {isAdmin && (
-                <button
-                  className="btn btn-sm btn-secondary"
-                  style={{ width: 'auto' }}
-                  onClick={handleOpenAssign}
-                >
-                  <UserCheck className="w-3.5 h-3.5" /> {guest ? 'Change guest' : 'Assign guest'}
-                </button>
-              )}
+              <button
+                className="btn btn-sm btn-secondary"
+                style={{ width: 'auto' }}
+                onClick={handleOpenAssign}
+              >
+                <UserCheck className="w-3.5 h-3.5" /> {guest ? 'Change guest' : 'Assign guest'}
+              </button>
             </div>
 
             {!guest ? (
@@ -380,18 +482,111 @@ export function RoomDetailScreen({ roomId }: { roomId: string }) {
                     <Save className="w-4 h-4" /> {saved ? 'Saved!' : saving ? 'Saving…' : 'Save changes'}
                   </button>
                 </div>
-                {isAdmin && (
-                  <div style={{ padding: '0 16px 16px' }}>
-                    <button className="btn btn-danger" onClick={removeGuest}>
-                      <UserX className="w-4 h-4" /> Remove guest from room
-                    </button>
-                  </div>
-                )}
+                <div style={{ padding: '0 16px 16px' }}>
+                  <button className="btn btn-danger" onClick={removeGuest}>
+                    <UserX className="w-4 h-4" /> Remove guest from room
+                  </button>
+                </div>
               </>
             )}
           </>
         )}
       </div>
+
+      {/* Edit Room Modal */}
+      {showEditRoomModal && (
+        <div className="modal-overlay open" onClick={() => setShowEditRoomModal(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-handle" />
+            <div className="modal-title">Edit Room {room?.room_no}</div>
+            
+            <div className="form-group">
+              <label>Room Number *</label>
+              <input
+                type="text"
+                placeholder="e.g. 101"
+                value={editRoomForm.room_no}
+                onChange={e => setEditRoomForm(f => ({ ...f, room_no: e.target.value }))}
+              />
+            </div>
+            <div className="form-group">
+              <label>Room Type</label>
+              <input
+                type="text"
+                placeholder="Standard / Deluxe / AC / Suite…"
+                value={editRoomForm.room_type}
+                onChange={e => setEditRoomForm(f => ({ ...f, room_type: e.target.value }))}
+              />
+            </div>
+            <div className="form-group">
+              <label>Bed Configuration</label>
+              <select
+                value={editRoomForm.bed_config}
+                onChange={e => setEditRoomForm(f => ({ ...f, bed_config: e.target.value }))}
+              >
+                {BED_CONFIGS.map(c => <option key={c}>{c}</option>)}
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Floor</label>
+              <select
+                value={editRoomForm.floor}
+                onChange={e => setEditRoomForm(f => ({ ...f, floor: e.target.value }))}
+              >
+                {FLOORS.map(fl => <option key={fl}>{fl}</option>)}
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Category</label>
+              <select
+                value={editRoomForm.category}
+                onChange={e => setEditRoomForm(f => ({ ...f, category: e.target.value }))}
+              >
+                <option>TRT</option>
+                <option>MPT</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Extra bed available?</label>
+              <select
+                value={editRoomForm.extra_bed ? 'Yes' : 'No'}
+                onChange={e => setEditRoomForm(f => ({ ...f, extra_bed: e.target.value === 'Yes' }))}
+              >
+                <option>No</option>
+                <option>Yes</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Notes</label>
+              <textarea
+                placeholder="Room notes…"
+                value={editRoomForm.notes}
+                onChange={e => setEditRoomForm(f => ({ ...f, notes: e.target.value }))}
+              />
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <button
+                onClick={saveRoomDetails}
+                disabled={saving || !editRoomForm.room_no.trim()}
+                className="btn btn-primary"
+              >
+                Save Room Details
+              </button>
+              <button
+                onClick={deleteRoom}
+                disabled={saving}
+                className="btn btn-danger"
+              >
+                Delete Room
+              </button>
+              <button className="btn btn-ghost" onClick={() => setShowEditRoomModal(false)}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Assign Guest Modal */}
       {showAssignModal && (

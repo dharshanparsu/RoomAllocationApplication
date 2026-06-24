@@ -26,6 +26,7 @@ interface Lodge {
   address: string | null;
   maps_link: string | null;
   contacts: Contact[] | null;
+  ac_remote_required?: boolean;
 }
 
 const BED_CONFIGS = ['Double Bed × 1', 'Double Bed × 1, Single Bed × 1', 'Double Bed × 2', 'Single Bed × 2', 'Other'];
@@ -40,14 +41,14 @@ export function LodgeDetailScreen({ lodgeId }: { lodgeId: string }) {
   const [showEdit, setShowEdit] = useState(false);
   const [form, setForm] = useState({ room_no: '', room_type: '', bed_config: BED_CONFIGS[0], floor: FLOORS[0], category: 'TRT', extra_bed: false });
   
-  const [editForm, setEditForm] = useState({ name: '', address: '', maps_link: '' });
+  const [editForm, setEditForm] = useState({ name: '', address: '', maps_link: '', ac_remote_required: false });
   const [editContacts, setEditContacts] = useState<Contact[]>([]);
   
   const [saving, setSaving] = useState(false);
 
   async function load() {
     const [lodgeRes, roomsRes] = await Promise.all([
-      supabase.from('lodges').select('id, name, address, maps_link, contacts').eq('id', lodgeId).single(),
+      supabase.from('lodges').select('id, name, address, maps_link, contacts, ac_remote_required').eq('id', lodgeId).single(),
       supabase.from('rooms')
         .select('id, room_no, room_type, bed_config, floor, room_guests(id, keys_given, guest:guests(id, name))')
         .eq('lodge_id', lodgeId)
@@ -66,6 +67,7 @@ export function LodgeDetailScreen({ lodgeId }: { lodgeId: string }) {
       name: lodge.name || '',
       address: lodge.address || '',
       maps_link: lodge.maps_link || '',
+      ac_remote_required: lodge.ac_remote_required || false,
     });
     setEditContacts(lodge.contacts ? [...lodge.contacts] : [{ name: '', phone: '', role: 'Lodge Contact' }]);
     setShowEdit(true);
@@ -84,6 +86,7 @@ export function LodgeDetailScreen({ lodgeId }: { lodgeId: string }) {
         address: editForm.address.trim() || null,
         maps_link: editForm.maps_link.trim() || null,
         contacts: activeContacts,
+        ac_remote_required: editForm.ac_remote_required,
       })
       .eq('id', lodge.id);
 
@@ -354,6 +357,19 @@ export function LodgeDetailScreen({ lodgeId }: { lodgeId: string }) {
                 value={editForm.address}
                 onChange={e => setEditForm(f => ({ ...f, address: e.target.value }))}
               />
+            </div>
+
+            <div className="form-group" style={{ flexDirection: 'row', alignItems: 'center', gap: '10px', display: 'flex', marginTop: '10px' }}>
+              <input
+                type="checkbox"
+                id="ac_remote_required"
+                checked={editForm.ac_remote_required}
+                onChange={e => setEditForm(f => ({ ...f, ac_remote_required: e.target.checked }))}
+                style={{ width: 'auto', margin: 0, cursor: 'pointer' }}
+              />
+              <label htmlFor="ac_remote_required" style={{ margin: 0, fontSize: '14px', fontWeight: 500, cursor: 'pointer' }}>
+                Track AC Remotes for this Lodge
+              </label>
             </div>
 
             <div className="form-group">

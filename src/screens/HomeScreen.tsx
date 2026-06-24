@@ -1,12 +1,19 @@
 import { useEffect, useState } from 'react';
-import { Building2, Key, Lock, ChevronRight, Settings } from 'lucide-react';
+import { Building2, Key, Lock, ChevronRight, Settings, Wind } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useNavigation } from '../contexts/NavigationContext';
+
+interface RoomGuest {
+  id: string;
+  keys_given: string;
+  ac_remote_given?: string | null;
+}
 
 interface Lodge {
   id: string;
   name: string;
-  rooms: { id: string; room_guests: { id: string }[] }[];
+  ac_remote_required?: boolean;
+  rooms: { id: string; room_guests: RoomGuest[] }[];
 }
 
 export function HomeScreen() {
@@ -14,18 +21,54 @@ export function HomeScreen() {
   const [lodges, setLodges] = useState<Lodge[]>([]);
   const [keysGiven, setKeysGiven] = useState(0);
   const [keysCollected, setKeysCollected] = useState(0);
+  const [totalAcRooms, setTotalAcRooms] = useState(0);
+  const [acGiven, setAcGiven] = useState(0);
+  const [acCollected, setAcCollected] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
-      const [lodgesRes, givenRes, collectedRes] = await Promise.all([
-        supabase.from('lodges').select('id, name, rooms(id, room_guests(id))'),
-        supabase.from('room_guests').select('*', { count: 'exact', head: true }).in('keys_given', ['given', 'collected']),
-        supabase.from('room_guests').select('*', { count: 'exact', head: true }).eq('keys_given', 'collected'),
-      ]);
-      setLodges((lodgesRes.data ?? []) as Lodge[]);
-      setKeysGiven(givenRes.count ?? 0);
-      setKeysCollected(collectedRes.count ?? 0);
+      const lodgesRes = await supabase.from('lodges').select('id, name, ac_remote_required, rooms(id, room_guests(id, keys_given, ac_remote_given))');
+      
+      const data = (lodgesRes.data ?? []) as Lodge[];
+      setLodges(data);
+
+      let given = 0;
+      let collected = 0;
+      let totalAc = 0;
+      let acG = 0;
+      let acC = 0;
+
+      data.forEach(lodge => {
+        lodge.rooms?.forEach(room => {
+          const rg = room.room_guests?.[0];
+          if (rg) {
+            if (rg.keys_given === 'given' || rg.keys_given === 'collected') {
+              given++;
+            }
+            if (rg.keys_given === 'collected') {
+              collected++;
+            }
+            if (lodge.ac_remote_required) {
+              if (rg.ac_remote_given === 'given' || rg.ac_remote_given === 'collected') {
+                acG++;
+              }
+              if (rg.ac_remote_given === 'collected') {
+                acC++;
+              }
+            }
+          }
+          if (lodge.ac_remote_required) {
+            totalAc++;
+          }
+        });
+      });
+
+      setKeysGiven(given);
+      setKeysCollected(collected);
+      setTotalAcRooms(totalAc);
+      setAcGiven(acG);
+      setAcCollected(acC);
       setLoading(false);
     }
     load();
@@ -139,6 +182,42 @@ export function HomeScreen() {
                 </span>
               </div>
             </div>
+
+            {totalAcRooms > 0 && (
+              <>
+                <div className="section-header">AC Remote Status</div>
+                <div className="card">
+                  <div className="list-row" style={{ cursor: 'default' }}>
+                    <div className="row-icon orange">
+                      <Wind className="w-5 h-5" style={{ color: 'var(--orange)' }} />
+                    </div>
+                    <div className="row-body">
+                      <div className="row-title">Remotes Handed Out</div>
+                      <div className="row-sub">
+                        {acGiven} of {totalAcRooms} rooms
+                      </div>
+                    </div>
+                    <span className="badge orange">
+                      {totalAcRooms > 0 ? Math.round((acGiven / totalAcRooms) * 100) : 0}%
+                    </span>
+                  </div>
+                  <div className="list-row" style={{ cursor: 'default' }}>
+                    <div className="row-icon green">
+                      <Lock className="w-5 h-5" style={{ color: 'var(--green)' }} />
+                    </div>
+                    <div className="row-body">
+                      <div className="row-title">Remotes Collected Back</div>
+                      <div className="row-sub">
+                        {acCollected} of {acGiven} given
+                      </div>
+                    </div>
+                    <span className="badge green">
+                      {acGiven > 0 ? Math.round((acCollected / acGiven) * 100) : 0}%
+                    </span>
+                  </div>
+                </div>
+              </>
+            )}
           </>
         )}
       </div>

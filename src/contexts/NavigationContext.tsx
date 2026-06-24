@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 
 export type Screen =
   | { name: 'home' }
+  | { name: 'allocations' }
   | { name: 'lodges' }
   | { name: 'lodge'; lodgeId: string }
   | { name: 'room'; roomId: string }
@@ -10,7 +11,7 @@ export type Screen =
   | { name: 'guest'; guestId: string }
   | { name: 'admin' };
 
-export type TabName = 'home' | 'lodges' | 'guests' | 'admin';
+export type TabName = 'home' | 'allocations' | 'lodges' | 'guests' | 'admin';
 
 interface NavContextType {
   screen: Screen;
@@ -24,6 +25,7 @@ interface NavContextType {
 const NavContext = createContext<NavContextType | undefined>(undefined);
 
 function screenToTab(name: string): TabName {
+  if (name === 'allocations') return 'allocations';
   if (name === 'lodges' || name === 'lodge' || name === 'room') return 'lodges';
   if (name === 'guests' || name === 'guest') return 'guests';
   if (name === 'admin') return 'admin';
@@ -40,6 +42,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
   const switchTab = useCallback((tab: TabName) => {
     const root: Screen =
       tab === 'home' ? { name: 'home' }
+      : tab === 'allocations' ? { name: 'allocations' }
       : tab === 'lodges' ? { name: 'lodges' }
       : tab === 'guests' ? { name: 'guests' }
       : { name: 'admin' };
