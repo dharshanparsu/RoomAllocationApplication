@@ -39,7 +39,7 @@ export function Login() {
   };
 
   const inputCls =
-    'w-full pl-11 pr-4 py-3.5 bg-white border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition';
+    'w-full pl-10 pr-4 py-3.5 bg-white border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition';
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-8 bg-gradient-to-b from-blue-50/60 to-white">
@@ -73,7 +73,7 @@ export function Login() {
             value={password}
             onChange={e => setPassword(e.target.value)}
             required
-            className={`${inputCls} pr-11`}
+            className={`${inputCls} pr-10`}
           />
           <button
             type="button"
