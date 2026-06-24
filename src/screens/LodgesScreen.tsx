@@ -1,16 +1,20 @@
 import { useEffect, useState } from 'react';
-import { Building2, ChevronRight, Navigation, Plus } from 'lucide-react';
+import { Building2, ChevronRight, Navigation, Plus, Trash } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useNavigation } from '../contexts/NavigationContext';
+
+interface Contact {
+  name: string;
+  phone: string;
+  role: string;
+}
 
 interface Lodge {
   id: string;
   name: string;
   address: string | null;
   maps_link: string | null;
-  lodge_contact: string | null;
-  incharge_name: string | null;
-  incharge_contact: string | null;
+  contacts: Contact[] | null;
   rooms: { id: string; room_guests: { id: string }[] }[];
 }
 
@@ -19,13 +23,16 @@ export function LodgesScreen() {
   const [lodges, setLodges] = useState<Lodge[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
-  const [form, setForm] = useState({ name: '', address: '', maps_link: '', lodge_contact: '', incharge_name: '', incharge_contact: '' });
+  const [form, setForm] = useState({ name: '', address: '', maps_link: '' });
+  const [contacts, setContacts] = useState<Contact[]>([
+    { name: '', phone: '', role: 'Lodge Contact' }
+  ]);
   const [saving, setSaving] = useState(false);
 
   async function load() {
     const { data } = await supabase
       .from('lodges')
-      .select('id, name, address, maps_link, lodge_contact, incharge_name, incharge_contact, rooms(id, room_guests(id))')
+      .select('id, name, address, maps_link, contacts, rooms(id, room_guests(id))')
       .order('name');
     setLodges((data ?? []) as Lodge[]);
     setLoading(false);
@@ -36,19 +43,36 @@ export function LodgesScreen() {
   async function addLodge() {
     if (!form.name.trim()) return;
     setSaving(true);
+    
+    // Filter out completely empty contacts
+    const activeContacts = contacts.filter(c => c.name.trim() || c.phone.trim() || c.role.trim());
+
     await supabase.from('lodges').insert({
       name: form.name.trim(),
       address: form.address.trim() || null,
       maps_link: form.maps_link.trim() || null,
-      lodge_contact: form.lodge_contact.trim() || null,
-      incharge_name: form.incharge_name.trim() || null,
-      incharge_contact: form.incharge_contact.trim() || null,
+      contacts: activeContacts,
     });
-    setForm({ name: '', address: '', maps_link: '', lodge_contact: '', incharge_name: '', incharge_contact: '' });
+    setForm({ name: '', address: '', maps_link: '' });
+    setContacts([{ name: '', phone: '', role: 'Lodge Contact' }]);
     setShowAdd(false);
     setSaving(false);
     load();
   }
+
+  const addContactField = () => {
+    setContacts([...contacts, { name: '', phone: '', role: 'Lodge Contact' }]);
+  };
+
+  const removeContactField = (index: number) => {
+    setContacts(contacts.filter((_, i) => i !== index));
+  };
+
+  const updateContact = (index: number, field: keyof Contact, value: string) => {
+    const updated = [...contacts];
+    updated[index][field] = value;
+    setContacts(updated);
+  };
 
   return (
     <div className="screen active">
@@ -132,34 +156,73 @@ export function LodgesScreen() {
               />
             </div>
 
-            <div className="form-group">
-              <label>Lodge Contact Number</label>
-              <input
-                type="tel"
-                placeholder="e.g. +91 98765 43210"
-                value={form.lodge_contact}
-                onChange={e => setForm(f => ({ ...f, lodge_contact: e.target.value }))}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3" style={{ marginBottom: '16px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px' }}>In-charge Name</label>
-                <input
-                  type="text"
-                  placeholder="In-charge name"
-                  value={form.incharge_name}
-                  onChange={e => setForm(f => ({ ...f, incharge_name: e.target.value }))}
-                />
+            {/* Dynamic Contacts Section */}
+            <div style={{ marginBottom: '16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)', flex: 1, margin: 0 }}>Contacts</label>
+                <button 
+                  type="button" 
+                  onClick={addContactField}
+                  className="btn btn-sm btn-secondary" 
+                  style={{ width: 'auto', padding: '4px 10px', fontSize: '12px' }}
+                >
+                  + Add Contact
+                </button>
               </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px' }}>In-charge Contact</label>
-                <input
-                  type="tel"
-                  placeholder="In-charge phone"
-                  value={form.incharge_contact}
-                  onChange={e => setForm(f => ({ ...f, incharge_contact: e.target.value }))}
-                />
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {contacts.map((contact, idx) => (
+                  <div key={idx} style={{ background: 'var(--bg)', padding: '12px', borderRadius: '10px', border: '1px solid var(--border)', position: 'relative' }}>
+                    {contacts.length > 1 && (
+                      <button 
+                        type="button"
+                        onClick={() => removeContactField(idx)}
+                        style={{ position: 'absolute', right: '8px', top: '8px', border: 'none', background: 'none', color: 'var(--red)', cursor: 'pointer', padding: '4px' }}
+                      >
+                        <Trash className="w-4 h-4" />
+                      </button>
+                    )}
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px' }}>Name</label>
+                          <input
+                            type="text"
+                            placeholder="Contact Name"
+                            value={contact.name}
+                            onChange={e => updateContact(idx, 'name', e.target.value)}
+                            style={{ padding: '8px 10px', fontSize: '13px' }}
+                          />
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px' }}>Phone</label>
+                          <input
+                            type="tel"
+                            placeholder="Phone number"
+                            value={contact.phone}
+                            onChange={e => updateContact(idx, 'phone', e.target.value)}
+                            style={{ padding: '8px 10px', fontSize: '13px' }}
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px' }}>Role / Label</label>
+                        <select
+                          value={contact.role}
+                          onChange={e => updateContact(idx, 'role', e.target.value)}
+                          style={{ padding: '8px 10px', fontSize: '13px' }}
+                        >
+                          <option>Lodge Contact</option>
+                          <option>Lodge In-charge</option>
+                          <option>Supervisor</option>
+                          <option>Owner</option>
+                          <option>Manager</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
 

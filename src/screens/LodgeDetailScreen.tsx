@@ -13,14 +13,19 @@ interface Room {
   floor: string | null;
   room_guests: RoomGuest[];
 }
+
+interface Contact {
+  name: string;
+  phone: string;
+  role: string;
+}
+
 interface Lodge {
   id: string;
   name: string;
   address: string | null;
   maps_link: string | null;
-  lodge_contact: string | null;
-  incharge_name: string | null;
-  incharge_contact: string | null;
+  contacts: Contact[] | null;
 }
 
 const BED_CONFIGS = ['Double Bed × 1', 'Double Bed × 1, Single Bed × 1', 'Double Bed × 2', 'Single Bed × 2', 'Other'];
@@ -37,7 +42,7 @@ export function LodgeDetailScreen({ lodgeId }: { lodgeId: string }) {
 
   async function load() {
     const [lodgeRes, roomsRes] = await Promise.all([
-      supabase.from('lodges').select('id, name, address, maps_link, lodge_contact, incharge_name, incharge_contact').eq('id', lodgeId).single(),
+      supabase.from('lodges').select('id, name, address, maps_link, contacts').eq('id', lodgeId).single(),
       supabase.from('rooms')
         .select('id, room_no, room_type, bed_config, floor, room_guests(id, keys_given, guest:guests(id, name))')
         .eq('lodge_id', lodgeId)
@@ -117,33 +122,28 @@ export function LodgeDetailScreen({ lodgeId }: { lodgeId: string }) {
             )}
 
             {/* Contacts Card */}
-            {(lodge?.lodge_contact || lodge?.incharge_contact) && (
+            {lodge?.contacts && lodge.contacts.length > 0 && (
               <div className="card" style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {lodge.lodge_contact && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                      <span style={{ display: 'block', fontSize: '10px', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Lodge Contact</span>
-                      <span style={{ fontSize: '14px', fontWeight: 500, color: 'var(--text)' }}>{lodge.lodge_contact}</span>
+                {lodge.contacts.map((contact, idx) => (
+                  <div key={idx}>
+                    {idx > 0 && <div style={{ borderTop: '1px solid var(--border)', margin: '8px 0' }} />}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <span style={{ display: 'block', fontSize: '10px', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                          {contact.role || 'Lodge Contact'}
+                        </span>
+                        <span style={{ fontSize: '14px', fontWeight: 500, color: 'var(--text)' }}>
+                          {contact.name ? `${contact.name} (${contact.phone})` : contact.phone}
+                        </span>
+                      </div>
+                      {contact.phone && (
+                        <a href={`tel:${contact.phone}`} className="call-btn" style={{ width: '36px', height: '36px', boxShadow: 'none' }} title={`Call ${contact.name || contact.role}`}>
+                          <Phone className="w-4 h-4" />
+                        </a>
+                      )}
                     </div>
-                    <a href={`tel:${lodge.lodge_contact}`} className="call-btn" style={{ width: '36px', height: '36px', boxShadow: 'none' }} title="Call Lodge">
-                      <Phone className="w-4 h-4" />
-                    </a>
                   </div>
-                )}
-                {lodge.lodge_contact && lodge.incharge_contact && <div style={{ borderTop: '1px solid var(--border)' }} />}
-                {lodge.incharge_contact && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                      <span style={{ display: 'block', fontSize: '10px', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Lodge In-charge</span>
-                      <span style={{ fontSize: '14px', fontWeight: 500, color: 'var(--text)' }}>
-                        {lodge.incharge_name ? `${lodge.incharge_name} (${lodge.incharge_contact})` : lodge.incharge_contact}
-                      </span>
-                    </div>
-                    <a href={`tel:${lodge.incharge_contact}`} className="call-btn" style={{ width: '36px', height: '36px', boxShadow: 'none' }} title="Call In-charge">
-                      <Phone className="w-4 h-4" />
-                    </a>
-                  </div>
-                )}
+                ))}
               </div>
             )}
 
