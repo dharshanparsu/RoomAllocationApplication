@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ChevronLeft, Key, CheckCircle2, Phone, UserCheck, Save, UserX } from 'lucide-react';
+import { ChevronLeft, Key, CheckCircle2, Phone, UserCheck, Save, UserX, Trash } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useNavigation } from '../contexts/NavigationContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -11,6 +11,10 @@ interface GuestForm {
   hometown: string;
   side: string;
   notes: string;
+}
+
+interface SubGuest {
+  name: string;
 }
 
 interface RoomData {
@@ -34,6 +38,7 @@ interface RoomData {
       hometown: string | null;
       side: string | null;
       notes: string | null;
+      sub_guests: SubGuest[] | null;
     } | null;
   }[];
 }
@@ -44,6 +49,7 @@ export function RoomDetailScreen({ roomId }: { roomId: string }) {
   const [room, setRoom] = useState<RoomData | null>(null);
   const [loading, setLoading] = useState(true);
   const [guestForm, setGuestForm] = useState<GuestForm>({ name: '', phone: '', party_size: '', hometown: '', side: 'bride', notes: '' });
+  const [subGuests, setSubGuests] = useState<SubGuest[]>([]);
   const [saving, setSaving] = useState(false);
   const [keyUpdating, setKeyUpdating] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -54,7 +60,7 @@ export function RoomDetailScreen({ roomId }: { roomId: string }) {
       .select(`
         id, room_no, room_type, bed_config, floor, category, extra_bed, notes,
         lodge:lodges(id, name),
-        room_guests(id, keys_given, guest:guests(id, name, phone, party_size, hometown, side, notes))
+        room_guests(id, keys_given, guest:guests(id, name, phone, party_size, hometown, side, notes, sub_guests))
       `)
       .eq('id', roomId)
       .single();
@@ -70,8 +76,10 @@ export function RoomDetailScreen({ roomId }: { roomId: string }) {
         side: g.side ?? 'bride',
         notes: g.notes ?? '',
       });
+      setSubGuests(g.sub_guests ? [...g.sub_guests] : []);
     } else {
       setGuestForm({ name: '', phone: '', party_size: '', hometown: '', side: 'bride', notes: '' });
+      setSubGuests([]);
     }
     setLoading(false);
   }
@@ -93,13 +101,19 @@ export function RoomDetailScreen({ roomId }: { roomId: string }) {
   async function saveGuest() {
     if (!guest) return;
     setSaving(true);
+    const activeSubGuests = subGuests.filter(s => s.name.trim());
+    const calculatedPartySize = guestForm.party_size.trim()
+      ? parseInt(guestForm.party_size)
+      : (activeSubGuests.length + 1);
+
     await supabase.from('guests').update({
       name: guestForm.name.trim(),
       phone: guestForm.phone.trim() || null,
-      party_size: guestForm.party_size ? parseInt(guestForm.party_size) : null,
+      party_size: calculatedPartySize,
       hometown: guestForm.hometown.trim() || null,
       side: guestForm.side,
       notes: guestForm.notes.trim() || null,
+      sub_guests: activeSubGuests,
     }).eq('id', guest.id);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
@@ -112,6 +126,20 @@ export function RoomDetailScreen({ roomId }: { roomId: string }) {
     await supabase.from('room_guests').delete().eq('id', rg.id);
     load();
   }
+
+  const addSubGuestField = () => {
+    setSubGuests([...subGuests, { name: '' }]);
+  };
+
+  const removeSubGuestField = (index: number) => {
+    setSubGuests(subGuests.filter((_, i) => i !== index));
+  };
+
+  const updateSubGuest = (index: number, value: string) => {
+    const updated = [...subGuests];
+    updated[index].name = value;
+    setSubGuests(updated);
+  };
 
   return (
     <div className="screen active">
@@ -237,13 +265,49 @@ export function RoomDetailScreen({ roomId }: { roomId: string }) {
                       )}
                     </div>
                   </div>
+
+                  {/* Sub-guests builder inside RoomDetail */}
                   <div className="detail-field">
-                    <label>Party size (no. of persons)</label>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <label style={{ margin: 0 }}>Sub Guests</label>
+                      <button 
+                        type="button" 
+                        onClick={addSubGuestField}
+                        className="btn btn-sm btn-secondary" 
+                        style={{ width: 'auto', padding: '4px 10px', fontSize: '11px' }}
+                      >
+                        + Add Sub Guest
+                      </button>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {subGuests.map((sub, idx) => (
+                        <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                          <input
+                            type="text"
+                            placeholder={`Sub guest ${idx + 1} name`}
+                            value={sub.name}
+                            onChange={e => updateSubGuest(idx, e.target.value)}
+                            style={{ padding: '6px 8px', fontSize: '13px', flex: 1 }}
+                          />
+                          <button 
+                            type="button"
+                            onClick={() => removeSubGuestField(idx)}
+                            style={{ border: 'none', background: 'none', color: 'var(--red)', cursor: 'pointer', padding: '4px' }}
+                          >
+                            <Trash className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="detail-field">
+                    <label>Party size (main + sub guests)</label>
                     <input
                       type="number"
+                      placeholder={subGuests.length > 0 ? (subGuests.length + 1).toString() : "No. of persons"}
                       value={guestForm.party_size}
                       onChange={e => setGuestForm(f => ({ ...f, party_size: e.target.value }))}
-                      placeholder="0"
                     />
                   </div>
                   <div className="detail-field">
