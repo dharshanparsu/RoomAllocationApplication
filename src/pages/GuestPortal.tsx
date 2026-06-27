@@ -433,7 +433,7 @@ export function GuestPortal() {
                       </div>
                       <div className="guest-contact-info">
                         <span className="guest-contact-name">{guest.lodge.incharge_name}</span>
-                        <span className="guest-contact-role">In-charge</span>
+                        <span className="guest-contact-role">Accommodation Coordinator</span>
                       </div>
                       <Phone className="w-4 h-4 guest-contact-phone-icon" />
                     </a>

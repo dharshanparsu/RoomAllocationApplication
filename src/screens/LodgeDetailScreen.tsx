@@ -347,7 +347,7 @@ export function LodgeDetailScreen({ lodgeId }: { lodgeId: string }) {
                           style={{ padding: '8px 10px', fontSize: '13px' }}
                         >
                           <option>Lodge Contact</option>
-                          <option>Lodge In-charge</option>
+                          <option>Accommodation Coordinator</option>
                           <option>Supervisor</option>
                           <option>Owner</option>
                           <option>Manager</option>
