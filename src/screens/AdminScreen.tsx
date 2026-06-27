@@ -59,6 +59,7 @@ export function AdminScreen() {
           </div>
         ) : (
           <>
+
             {!isAdmin && (
               <div className="info-banner">
                 Admin-only features are restricted to the wedding admin account.

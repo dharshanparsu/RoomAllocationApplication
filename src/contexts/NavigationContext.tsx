@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 export type Screen =
   | { name: 'home' }
   | { name: 'allocations' }
+  | { name: 'config' }
   | { name: 'lodges' }
   | { name: 'lodge'; lodgeId: string }
   | { name: 'room'; roomId: string }
@@ -11,7 +12,7 @@ export type Screen =
   | { name: 'guest'; guestId: string }
   | { name: 'admin' };
 
-export type TabName = 'home' | 'allocations' | 'lodges' | 'guests' | 'admin';
+export type TabName = 'home' | 'dashboard' | 'config' | 'admin';
 
 interface NavContextType {
   screen: Screen;
@@ -25,15 +26,15 @@ interface NavContextType {
 const NavContext = createContext<NavContextType | undefined>(undefined);
 
 function screenToTab(name: string): TabName {
-  if (name === 'allocations') return 'allocations';
-  if (name === 'lodges' || name === 'lodge' || name === 'room') return 'lodges';
-  if (name === 'guests' || name === 'guest') return 'guests';
+  if (name === 'allocations') return 'home';
+  if (name === 'home') return 'dashboard';
+  if (name === 'config' || name === 'lodges' || name === 'lodge' || name === 'room' || name === 'guests' || name === 'guest') return 'config';
   if (name === 'admin') return 'admin';
   return 'home';
 }
 
 export function NavigationProvider({ children }: { children: ReactNode }) {
-  const [stack, setStack] = useState<Screen[]>([{ name: 'home' }]);
+  const [stack, setStack] = useState<Screen[]>([{ name: 'allocations' }]);
 
   const navigate = useCallback((screen: Screen) => {
     setStack(s => [...s, screen]);
@@ -41,10 +42,9 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
 
   const switchTab = useCallback((tab: TabName) => {
     const root: Screen =
-      tab === 'home' ? { name: 'home' }
-      : tab === 'allocations' ? { name: 'allocations' }
-      : tab === 'lodges' ? { name: 'lodges' }
-      : tab === 'guests' ? { name: 'guests' }
+      tab === 'home' ? { name: 'allocations' }
+      : tab === 'dashboard' ? { name: 'home' }
+      : tab === 'config' ? { name: 'config' }
       : { name: 'admin' };
     setStack([root]);
   }, []);

@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Key, CheckCircle2, Phone, Search, SlidersHorizontal, ChevronRight, XCircle } from 'lucide-react';
+import { Key, CheckCircle2, Phone, Search, SlidersHorizontal, ChevronRight, XCircle, Edit3 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useNavigation } from '../contexts/NavigationContext';
 
 interface SubGuest {
   name: string;
+  phone?: string;
 }
 
 interface Guest {
@@ -51,10 +52,58 @@ export function AllocationsScreen() {
   const [selectedKeyStatus, setSelectedKeyStatus] = useState('All');
   const [selectedSide, setSelectedSide] = useState('All');
   const [selectedOccupancy, setSelectedOccupancy] = useState('All');
-  const [showFilters, setShowFilters] = useState(false);
+  const [showFilters, setShowFilters] = useState(true);
 
   // Loading/saving state per room guest for inline actions
   const [updatingGuestId, setUpdatingGuestId] = useState<string | null>(null);
+
+  // Quick inline edit state
+  const [editingGuestId, setEditingGuestId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ name: '', phone: '' });
+  const [savingGuestId, setSavingGuestId] = useState<string | null>(null);
+
+  // Custom confirmation modal state
+  const [confirmModal, setConfirmModal] = useState<{
+    show: boolean;
+    message: string;
+    onConfirm: () => void;
+  }>({ show: false, message: '', onConfirm: () => {} });
+
+  async function saveInlineEdit(guestId: string) {
+    setSavingGuestId(guestId);
+    const { error } = await supabase
+      .from('guests')
+      .update({
+        name: editForm.name,
+        phone: editForm.phone || null
+      })
+      .eq('id', guestId);
+
+    if (!error) {
+      setRooms(prevRooms =>
+        prevRooms.map(room => {
+          const updatedGuests = room.room_guests.map(rg => {
+            if (rg.guest && rg.guest.id === guestId) {
+              return {
+                ...rg,
+                guest: {
+                  ...rg.guest,
+                  name: editForm.name,
+                  phone: editForm.phone || null
+                }
+              };
+            }
+            return rg;
+          });
+          return { ...room, room_guests: updatedGuests };
+        })
+      );
+      setEditingGuestId(null);
+    } else {
+      alert('Error updating guest: ' + error.message);
+    }
+    setSavingGuestId(null);
+  }
 
   async function loadData() {
     setLoading(true);
@@ -87,7 +136,7 @@ export function AllocationsScreen() {
     loadData();
   }, []);
 
-  async function updateKeyStatus(roomGuestId: string, newStatus: string) {
+  async function executeKeyStatusUpdate(roomGuestId: string, newStatus: string) {
     setUpdatingGuestId(roomGuestId);
     const { error } = await supabase
       .from('room_guests')
@@ -95,7 +144,6 @@ export function AllocationsScreen() {
       .eq('id', roomGuestId);
 
     if (!error) {
-      // Update local state to feel fast and avoid full reload spinner
       setRooms(prevRooms =>
         prevRooms.map(room => {
           const updatedGuests = room.room_guests.map(rg => {
@@ -107,11 +155,13 @@ export function AllocationsScreen() {
           return { ...room, room_guests: updatedGuests };
         })
       );
+    } else {
+      alert('Error updating key status: ' + error.message);
     }
     setUpdatingGuestId(null);
   }
 
-  async function updateRemoteStatus(roomGuestId: string, newStatus: string) {
+  async function executeRemoteStatusUpdate(roomGuestId: string, newStatus: string) {
     setUpdatingGuestId(roomGuestId);
     const { error } = await supabase
       .from('room_guests')
@@ -119,7 +169,6 @@ export function AllocationsScreen() {
       .eq('id', roomGuestId);
 
     if (!error) {
-      // Update local state to feel fast
       setRooms(prevRooms =>
         prevRooms.map(room => {
           const updatedGuests = room.room_guests.map(rg => {
@@ -131,11 +180,13 @@ export function AllocationsScreen() {
           return { ...room, room_guests: updatedGuests };
         })
       );
+    } else {
+      alert('Error updating AC remote status: ' + error.message);
     }
     setUpdatingGuestId(null);
   }
 
-  async function updateExtraBedStatus(roomGuestId: string, newStatus: string) {
+  async function executeExtraBedStatusUpdate(roomGuestId: string, newStatus: string) {
     setUpdatingGuestId(roomGuestId);
     const { error } = await supabase
       .from('room_guests')
@@ -154,8 +205,51 @@ export function AllocationsScreen() {
           return { ...room, room_guests: updatedGuests };
         })
       );
+    } else {
+      alert('Error updating extra bed status: ' + error.message);
     }
     setUpdatingGuestId(null);
+  }
+
+  function updateKeyStatus(roomGuestId: string, newStatus: string) {
+    const statusLabel =
+      newStatus === 'not_given' ? 'Not Given'
+      : newStatus === 'given' ? 'Given'
+      : newStatus === 'collected' ? 'Collected'
+      : 'Given to Reception';
+    
+    setConfirmModal({
+      show: true,
+      message: `Are you sure you want to change key status to "${statusLabel}"?`,
+      onConfirm: () => executeKeyStatusUpdate(roomGuestId, newStatus)
+    });
+  }
+
+  function updateRemoteStatus(roomGuestId: string, newStatus: string) {
+    const statusLabel =
+      newStatus === 'not_given' ? 'Not Given'
+      : newStatus === 'given' ? 'Given'
+      : newStatus === 'collected' ? 'Collected'
+      : 'Given to Reception';
+
+    setConfirmModal({
+      show: true,
+      message: `Are you sure you want to change AC remote status to "${statusLabel}"?`,
+      onConfirm: () => executeRemoteStatusUpdate(roomGuestId, newStatus)
+    });
+  }
+
+  function updateExtraBedStatus(roomGuestId: string, newStatus: string) {
+    const statusLabel =
+      newStatus === 'not_required' ? 'N/A'
+      : newStatus === 'procured' ? 'Procured'
+      : 'Returned';
+
+    setConfirmModal({
+      show: true,
+      message: `Are you sure you want to change extra bed status to "${statusLabel}"?`,
+      onConfirm: () => executeExtraBedStatusUpdate(roomGuestId, newStatus)
+    });
   }
 
   // Filter records
@@ -193,8 +287,9 @@ export function AllocationsScreen() {
     if (selectedKeyStatus !== 'All') {
       const currentKey = activeRG?.keys_given || 'not_given';
       if (selectedKeyStatus === 'not_given' && currentKey !== 'not_given' && currentKey !== 'none') return false;
-      if (selectedKeyStatus === 'given' && currentKey !== 'given') return false;
+      if (selectedKeyStatus === 'given' && currentKey !== 'given' && currentKey !== 'reception') return false;
       if (selectedKeyStatus === 'collected' && currentKey !== 'collected' && currentKey !== 'back') return false;
+      if (selectedKeyStatus === 'reception' && currentKey !== 'reception') return false;
     }
 
     // Side filter
@@ -269,6 +364,7 @@ export function AllocationsScreen() {
                 <option value="not_given">Not Given</option>
                 <option value="given">Key Given</option>
                 <option value="collected">Collected Back</option>
+                <option value="reception">Given to Reception</option>
               </select>
             </div>
           </div>
@@ -324,7 +420,7 @@ export function AllocationsScreen() {
               return (
                 <div key={room.id}>
                   {idx > 0 && <div style={{ borderTop: '1px solid var(--border)' }} />}
-                  <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     
                     {/* Header Row: Room & Lodge */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -353,33 +449,85 @@ export function AllocationsScreen() {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         {activeGuest ? (
-                          <>
-                            <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text)' }}>
-                              {activeGuest.name}
-                              <span style={{ fontSize: '12px', fontWeight: 400, color: 'var(--text-muted)', marginLeft: '6px' }}>
-                                ({activeGuest.party_size || 1} pax)
-                              </span>
+                          editingGuestId === activeGuest.id ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', paddingRight: '8px' }}>
+                              <input
+                                type="text"
+                                value={editForm.name}
+                                onChange={e => setEditForm(prev => ({ ...prev, name: e.target.value }))}
+                                placeholder="Guest Name"
+                                style={{
+                                  fontSize: '14px',
+                                  padding: '6px 8px',
+                                  borderRadius: '6px',
+                                  border: '1px solid var(--border)',
+                                  width: '100%',
+                                  background: 'var(--white)',
+                                  color: 'var(--text)'
+                                }}
+                              />
+                              <input
+                                type="text"
+                                value={editForm.phone}
+                                onChange={e => setEditForm(prev => ({ ...prev, phone: e.target.value }))}
+                                placeholder="Phone Number"
+                                style={{
+                                  fontSize: '14px',
+                                  padding: '6px 8px',
+                                  borderRadius: '6px',
+                                  border: '1px solid var(--border)',
+                                  width: '100%',
+                                  background: 'var(--white)',
+                                  color: 'var(--text)'
+                                }}
+                              />
+                              <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                                <button
+                                  disabled={savingGuestId === activeGuest.id}
+                                  onClick={() => saveInlineEdit(activeGuest.id)}
+                                  className="btn btn-sm"
+                                  style={{ width: 'auto', padding: '4px 12px', fontSize: '12px' }}
+                                >
+                                  {savingGuestId === activeGuest.id ? 'Saving...' : 'Save'}
+                                </button>
+                                <button
+                                  onClick={() => setEditingGuestId(null)}
+                                  className="btn btn-sm btn-ghost"
+                                  style={{ width: 'auto', padding: '4px 12px', fontSize: '12px' }}
+                                >
+                                  Cancel
+                                </button>
+                              </div>
                             </div>
-                            
-                            {activeGuest.phone && (
-                              <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                <Phone className="w-3 h-3" />
-                                {activeGuest.phone}
+                          ) : (
+                            <>
+                              <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text)' }}>
+                                {activeGuest.name}
+                                <span style={{ fontSize: '12px', fontWeight: 400, color: 'var(--text-muted)', marginLeft: '6px' }}>
+                                  ({activeGuest.party_size || 1} pax)
+                                </span>
                               </div>
-                            )}
+                              
+                              {activeGuest.phone && (
+                                <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                  <Phone className="w-3 h-3" />
+                                  {activeGuest.phone}
+                                </div>
+                              )}
 
-                            {activeGuest.hometown && (
-                              <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '1px' }}>
-                                From: {activeGuest.hometown}
-                              </div>
-                            )}
+                              {activeGuest.hometown && (
+                                <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '1px' }}>
+                                  From: {activeGuest.hometown}
+                                </div>
+                              )}
 
-                            {activeGuest.sub_guests && activeGuest.sub_guests.length > 0 && (
-                              <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '3px', fontStyle: 'italic' }}>
-                                Subs: {activeGuest.sub_guests.map(s => s.name).join(', ')}
-                              </div>
-                            )}
-                          </>
+                              {activeGuest.sub_guests && activeGuest.sub_guests.length > 0 && (
+                                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '3px', fontStyle: 'italic' }}>
+                                  Subs: {activeGuest.sub_guests.map(s => s.phone ? `${s.name} (${s.phone})` : s.name).join(', ')}
+                                </div>
+                              )}
+                            </>
+                          )
                         ) : (
                           <div style={{ fontSize: '14px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
                             Vacant / Ready for Assignment
@@ -387,22 +535,37 @@ export function AllocationsScreen() {
                         )}
                       </div>
 
-                      {/* Phone quick call */}
-                      {activeGuest?.phone && (
-                        <a href={`tel:${activeGuest.phone}`} className="call-btn" style={{ width: '32px', height: '32px', boxShadow: 'none' }} title="Call guest">
-                          <Phone className="w-4 h-4" />
-                        </a>
+                      {/* Quick actions panel */}
+                      {activeGuest && editingGuestId !== activeGuest.id && (
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                          <button
+                            onClick={() => {
+                              setEditingGuestId(activeGuest.id);
+                              setEditForm({ name: activeGuest.name || '', phone: activeGuest.phone || '' });
+                            }}
+                            className="call-btn"
+                            style={{ width: '32px', height: '32px', boxShadow: 'none', background: 'var(--bg)', color: 'var(--text-muted)' }}
+                            title="Edit guest details"
+                          >
+                            <Edit3 className="w-4.5 h-4.5" />
+                          </button>
+                          {activeGuest.phone && (
+                            <a href={`tel:${activeGuest.phone}`} className="call-btn" style={{ width: '32px', height: '32px', boxShadow: 'none' }} title="Call guest">
+                              <Phone className="w-4 h-4" />
+                            </a>
+                          )}
+                        </div>
                       )}
                     </div>
 
                     {/* Quick Keys Status Handover control bar */}
                     {activeRG ? (
                       <>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg)', padding: '6px 10px', borderRadius: '8px', marginTop: '4px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', background: 'var(--bg)', padding: '8px 10px', borderRadius: '8px', marginTop: '6px' }}>
                           <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
                             Quick Keys:
                           </span>
-                          <div style={{ display: 'flex', gap: '6px' }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px' }}>
                             <button
                               disabled={updatingGuestId === activeRG.id}
                               onClick={() => updateKeyStatus(activeRG.id, 'not_given')}
@@ -411,14 +574,15 @@ export function AllocationsScreen() {
                                 background: keyStatus === 'not_given' || keyStatus === 'none' ? 'var(--orange-bg)' : 'var(--white)',
                                 borderColor: keyStatus === 'not_given' || keyStatus === 'none' ? '#fcd34d' : 'var(--border)',
                                 color: keyStatus === 'not_given' || keyStatus === 'none' ? 'var(--orange)' : 'var(--text-muted)',
-                                padding: '4px 8px',
+                                padding: '5px 10px',
                                 fontSize: '11px',
                                 fontWeight: 600,
                                 borderRadius: '6px',
                                 cursor: 'pointer',
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: '3px'
+                                gap: '3px',
+                                flexShrink: 0
                               }}
                             >
                               <XCircle className="w-3.5 h-3.5" />
@@ -433,14 +597,15 @@ export function AllocationsScreen() {
                                 background: keyStatus === 'given' ? 'var(--orange-bg)' : 'var(--white)',
                                 borderColor: keyStatus === 'given' ? '#fcd34d' : 'var(--border)',
                                 color: keyStatus === 'given' ? 'var(--orange)' : 'var(--text-muted)',
-                                padding: '4px 8px',
+                                padding: '5px 10px',
                                 fontSize: '11px',
                                 fontWeight: 600,
                                 borderRadius: '6px',
                                 cursor: 'pointer',
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: '3px'
+                                gap: '3px',
+                                flexShrink: 0
                               }}
                             >
                               <Key className="w-3.5 h-3.5" />
@@ -455,29 +620,53 @@ export function AllocationsScreen() {
                                 background: keyStatus === 'collected' || keyStatus === 'back' ? 'var(--green-bg)' : 'var(--white)',
                                 borderColor: keyStatus === 'collected' || keyStatus === 'back' ? '#86efac' : 'var(--border)',
                                 color: keyStatus === 'collected' || keyStatus === 'back' ? 'var(--green)' : 'var(--text-muted)',
-                                padding: '4px 8px',
+                                padding: '5px 10px',
                                 fontSize: '11px',
                                 fontWeight: 600,
                                 borderRadius: '6px',
                                 cursor: 'pointer',
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: '3px'
+                                gap: '3px',
+                                flexShrink: 0
                               }}
                             >
                               <CheckCircle2 className="w-3.5 h-3.5" />
                               Collected
+                            </button>
+
+                            <button
+                              disabled={updatingGuestId === activeRG.id}
+                              onClick={() => updateKeyStatus(activeRG.id, 'reception')}
+                              style={{
+                                border: '1px solid var(--border)',
+                                background: keyStatus === 'reception' ? '#f5f3ff' : 'var(--white)',
+                                borderColor: keyStatus === 'reception' ? '#a78bfa' : 'var(--border)',
+                                color: keyStatus === 'reception' ? '#6d28d9' : 'var(--text-muted)',
+                                padding: '5px 10px',
+                                fontSize: '11px',
+                                fontWeight: 600,
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '3px',
+                                flexShrink: 0
+                              }}
+                            >
+                              <Key className="w-3.5 h-3.5" style={{ transform: 'rotate(-45deg)' }} />
+                              Reception
                             </button>
                           </div>
                         </div>
 
                         {/* Quick AC Remote Status Handover control bar */}
                         {room.lodge?.ac_remote_required && (
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg)', padding: '6px 10px', borderRadius: '8px', marginTop: '6px' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', background: 'var(--bg)', padding: '8px 10px', borderRadius: '8px', marginTop: '6px' }}>
                             <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
                               Quick AC Remote:
                             </span>
-                            <div style={{ display: 'flex', gap: '6px' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px' }}>
                               <button
                                 disabled={updatingGuestId === activeRG.id}
                                 onClick={() => updateRemoteStatus(activeRG.id, 'not_given')}
@@ -486,14 +675,15 @@ export function AllocationsScreen() {
                                   background: activeRG.ac_remote_given === 'not_given' || !activeRG.ac_remote_given || activeRG.ac_remote_given === 'none' ? 'var(--orange-bg)' : 'var(--white)',
                                   borderColor: activeRG.ac_remote_given === 'not_given' || !activeRG.ac_remote_given || activeRG.ac_remote_given === 'none' ? '#fcd34d' : 'var(--border)',
                                   color: activeRG.ac_remote_given === 'not_given' || !activeRG.ac_remote_given || activeRG.ac_remote_given === 'none' ? 'var(--orange)' : 'var(--text-muted)',
-                                  padding: '4px 8px',
+                                  padding: '5px 10px',
                                   fontSize: '11px',
                                   fontWeight: 600,
                                   borderRadius: '6px',
                                   cursor: 'pointer',
                                   display: 'flex',
                                   alignItems: 'center',
-                                  gap: '3px'
+                                  gap: '3px',
+                                  flexShrink: 0
                                 }}
                               >
                                 <XCircle className="w-3.5 h-3.5" />
@@ -508,14 +698,15 @@ export function AllocationsScreen() {
                                   background: activeRG.ac_remote_given === 'given' ? 'var(--orange-bg)' : 'var(--white)',
                                   borderColor: activeRG.ac_remote_given === 'given' ? '#fcd34d' : 'var(--border)',
                                   color: activeRG.ac_remote_given === 'given' ? 'var(--orange)' : 'var(--text-muted)',
-                                  padding: '4px 8px',
+                                  padding: '5px 10px',
                                   fontSize: '11px',
                                   fontWeight: 600,
                                   borderRadius: '6px',
                                   cursor: 'pointer',
                                   display: 'flex',
                                   alignItems: 'center',
-                                  gap: '3px'
+                                  gap: '3px',
+                                  flexShrink: 0
                                 }}
                               >
                                 <Key className="w-3.5 h-3.5" />
@@ -530,18 +721,42 @@ export function AllocationsScreen() {
                                   background: activeRG.ac_remote_given === 'collected' || activeRG.ac_remote_given === 'back' ? 'var(--green-bg)' : 'var(--white)',
                                   borderColor: activeRG.ac_remote_given === 'collected' || activeRG.ac_remote_given === 'back' ? '#86efac' : 'var(--border)',
                                   color: activeRG.ac_remote_given === 'collected' || activeRG.ac_remote_given === 'back' ? 'var(--green)' : 'var(--text-muted)',
-                                  padding: '4px 8px',
+                                  padding: '5px 10px',
                                   fontSize: '11px',
                                   fontWeight: 600,
                                   borderRadius: '6px',
                                   cursor: 'pointer',
                                   display: 'flex',
                                   alignItems: 'center',
-                                  gap: '3px'
+                                  gap: '3px',
+                                  flexShrink: 0
                                 }}
                               >
                                 <CheckCircle2 className="w-3.5 h-3.5" />
                                 Collected
+                              </button>
+
+                              <button
+                                disabled={updatingGuestId === activeRG.id}
+                                onClick={() => updateRemoteStatus(activeRG.id, 'reception')}
+                                style={{
+                                  border: '1px solid var(--border)',
+                                  background: activeRG.ac_remote_given === 'reception' ? '#f5f3ff' : 'var(--white)',
+                                  borderColor: activeRG.ac_remote_given === 'reception' ? '#a78bfa' : 'var(--border)',
+                                  color: activeRG.ac_remote_given === 'reception' ? '#6d28d9' : 'var(--text-muted)',
+                                  padding: '5px 10px',
+                                  fontSize: '11px',
+                                  fontWeight: 600,
+                                  borderRadius: '6px',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '3px',
+                                  flexShrink: 0
+                                }}
+                              >
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                Reception
                               </button>
                             </div>
                           </div>
@@ -549,11 +764,11 @@ export function AllocationsScreen() {
 
                         {/* Quick Extra Bed Status control bar */}
                         {room.extra_bed && (
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg)', padding: '6px 10px', borderRadius: '8px', marginTop: '6px' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', background: 'var(--bg)', padding: '8px 10px', borderRadius: '8px', marginTop: '6px' }}>
                             <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
                               Quick Extra Bed:
                             </span>
-                            <div style={{ display: 'flex', gap: '6px' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
                               <button
                                 disabled={updatingGuestId === activeRG.id}
                                 onClick={() => updateExtraBedStatus(activeRG.id, 'not_required')}
@@ -562,14 +777,15 @@ export function AllocationsScreen() {
                                   background: activeRG.extra_bed_status === 'not_required' || !activeRG.extra_bed_status || activeRG.extra_bed_status === 'none' ? 'var(--green-bg)' : 'var(--white)',
                                   borderColor: activeRG.extra_bed_status === 'not_required' || !activeRG.extra_bed_status || activeRG.extra_bed_status === 'none' ? '#86efac' : 'var(--border)',
                                   color: activeRG.extra_bed_status === 'not_required' || !activeRG.extra_bed_status || activeRG.extra_bed_status === 'none' ? 'var(--green)' : 'var(--text-muted)',
-                                  padding: '4px 8px',
+                                  padding: '5px 10px',
                                   fontSize: '11px',
                                   fontWeight: 600,
                                   borderRadius: '6px',
                                   cursor: 'pointer',
                                   display: 'flex',
                                   alignItems: 'center',
-                                  gap: '3px'
+                                  gap: '3px',
+                                  flexShrink: 0
                                 }}
                               >
                                 <XCircle className="w-3.5 h-3.5" />
@@ -584,14 +800,15 @@ export function AllocationsScreen() {
                                   background: activeRG.extra_bed_status === 'procured' ? 'var(--orange-bg)' : 'var(--white)',
                                   borderColor: activeRG.extra_bed_status === 'procured' ? '#fcd34d' : 'var(--border)',
                                   color: activeRG.extra_bed_status === 'procured' ? 'var(--orange)' : 'var(--text-muted)',
-                                  padding: '4px 8px',
+                                  padding: '5px 10px',
                                   fontSize: '11px',
                                   fontWeight: 600,
                                   borderRadius: '6px',
                                   cursor: 'pointer',
                                   display: 'flex',
                                   alignItems: 'center',
-                                  gap: '3px'
+                                  gap: '3px',
+                                  flexShrink: 0
                                 }}
                               >
                                 <Key className="w-3.5 h-3.5" />
@@ -606,14 +823,15 @@ export function AllocationsScreen() {
                                   background: activeRG.extra_bed_status === 'returned' ? 'var(--green-bg)' : 'var(--white)',
                                   borderColor: activeRG.extra_bed_status === 'returned' ? '#86efac' : 'var(--border)',
                                   color: activeRG.extra_bed_status === 'returned' ? 'var(--green)' : 'var(--text-muted)',
-                                  padding: '4px 8px',
+                                  padding: '5px 10px',
                                   fontSize: '11px',
                                   fontWeight: 600,
                                   borderRadius: '6px',
                                   cursor: 'pointer',
                                   display: 'flex',
                                   alignItems: 'center',
-                                  gap: '3px'
+                                  gap: '3px',
+                                  flexShrink: 0
                                 }}
                               >
                                 <CheckCircle2 className="w-3.5 h-3.5" />
@@ -639,6 +857,36 @@ export function AllocationsScreen() {
           </div>
         )}
       </div>
+      {confirmModal.show && (
+        <div className="modal-overlay open" onClick={() => setConfirmModal(prev => ({ ...prev, show: false }))}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ padding: '24px', borderRadius: '20px 20px 0 0' }}>
+            <div className="modal-handle" />
+            <div className="modal-title" style={{ fontSize: '18px', fontWeight: 700, marginBottom: '12px' }}>Confirm Update</div>
+            <p style={{ fontSize: '14px', color: 'var(--text)', marginBottom: '24px', lineHeight: '1.4' }}>
+              {confirmModal.message}
+            </p>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button
+                onClick={() => {
+                  confirmModal.onConfirm();
+                  setConfirmModal(prev => ({ ...prev, show: false }));
+                }}
+                className="btn btn-primary"
+                style={{ flex: 1 }}
+              >
+                Confirm
+              </button>
+              <button
+                onClick={() => setConfirmModal(prev => ({ ...prev, show: false }))}
+                className="btn btn-ghost"
+                style={{ flex: 1 }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

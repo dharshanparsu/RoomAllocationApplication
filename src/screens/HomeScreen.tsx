@@ -8,6 +8,7 @@ interface RoomGuest {
   keys_given: string;
   ac_remote_given?: string | null;
   extra_bed_status?: string | null;
+  guest?: any;
 }
 
 interface Lodge {
@@ -20,82 +21,108 @@ interface Lodge {
 export function HomeScreen() {
   const { navigate, switchTab } = useNavigation();
   const [lodges, setLodges] = useState<Lodge[]>([]);
-  const [keysGiven, setKeysGiven] = useState(0);
-  const [keysCollected, setKeysCollected] = useState(0);
-  const [totalAcRooms, setTotalAcRooms] = useState(0);
-  const [acGiven, setAcGiven] = useState(0);
-  const [acCollected, setAcCollected] = useState(0);
-  const [totalExtraBeds, setTotalExtraBeds] = useState(0);
-  const [extraBedsProcured, setExtraBedsProcured] = useState(0);
-  const [extraBedsReturned, setExtraBedsReturned] = useState(0);
+  const [selectedSide, setSelectedSide] = useState('All');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
-      const lodgesRes = await supabase.from('lodges').select('id, name, ac_remote_required, rooms(id, extra_bed, room_guests(id, keys_given, ac_remote_given, extra_bed_status))');
+      const lodgesRes = await supabase
+        .from('lodges')
+        .select('id, name, ac_remote_required, rooms(id, extra_bed, room_guests(id, keys_given, ac_remote_given, extra_bed_status, guest:guests(id, name, side)))');
       
-      const data = (lodgesRes.data ?? []) as Lodge[];
+      const data = (lodgesRes.data ?? []) as any as Lodge[];
       setLodges(data);
-
-      let given = 0;
-      let collected = 0;
-      let totalAc = 0;
-      let acG = 0;
-      let acC = 0;
-      let totalBeds = 0;
-      let bedsP = 0;
-      let bedsR = 0;
-
-      data.forEach(lodge => {
-        lodge.rooms?.forEach(room => {
-          const rg = room.room_guests?.[0];
-          if (rg) {
-            if (rg.keys_given === 'given' || rg.keys_given === 'collected') {
-              given++;
-            }
-            if (rg.keys_given === 'collected') {
-              collected++;
-            }
-            if (lodge.ac_remote_required) {
-              if (rg.ac_remote_given === 'given' || rg.ac_remote_given === 'collected') {
-                acG++;
-              }
-              if (rg.ac_remote_given === 'collected') {
-                acC++;
-              }
-            }
-            if (rg.extra_bed_status === 'procured' || rg.extra_bed_status === 'returned') {
-              bedsP++;
-            }
-            if (rg.extra_bed_status === 'returned') {
-              bedsR++;
-            }
-          }
-          if (lodge.ac_remote_required) {
-            totalAc++;
-          }
-          if (room.extra_bed) {
-            totalBeds++;
-          }
-        });
-      });
-
-      setKeysGiven(given);
-      setKeysCollected(collected);
-      setTotalAcRooms(totalAc);
-      setAcGiven(acG);
-      setAcCollected(acC);
-      setTotalExtraBeds(totalBeds);
-      setExtraBedsProcured(bedsP);
-      setExtraBedsReturned(bedsR);
       setLoading(false);
     }
     load();
   }, []);
 
-  const totalRooms = lodges.reduce((s, l) => s + l.rooms.length, 0);
-  const assigned = lodges.reduce((s, l) => s + l.rooms.filter(r => r.room_guests.length > 0).length, 0);
-  const vacant = totalRooms - assigned;
+  // Compute metrics dynamically
+  let totalRooms = 0;
+  let assigned = 0;
+  let vacant = 0;
+  let keysGiven = 0;
+  let keysCollected = 0;
+  let totalAcRooms = 0;
+  let acGiven = 0;
+  let acCollected = 0;
+  let totalExtraBeds = 0;
+  let extraBedsProcured = 0;
+  let extraBedsReturned = 0;
+
+  lodges.forEach(lodge => {
+    lodge.rooms?.forEach(room => {
+      const rg = room.room_guests?.[0];
+      const guestObj = rg?.guest ? (Array.isArray(rg.guest) ? rg.guest[0] : rg.guest) : null;
+      const guestSide = guestObj?.side || 'unassigned';
+      const matchesSide = selectedSide === 'All' || guestSide === selectedSide;
+
+      if (selectedSide === 'All') {
+        totalRooms++;
+        if (rg) {
+          assigned++;
+          if (rg.keys_given === 'given' || rg.keys_given === 'collected' || rg.keys_given === 'reception') {
+            keysGiven++;
+          }
+          if (rg.keys_given === 'collected') {
+            keysCollected++;
+          }
+          if (lodge.ac_remote_required) {
+            if (rg.ac_remote_given === 'given' || rg.ac_remote_given === 'collected' || rg.ac_remote_given === 'reception') {
+              acGiven++;
+            }
+            if (rg.ac_remote_given === 'collected') {
+              acCollected++;
+            }
+          }
+          if (rg.extra_bed_status === 'procured' || rg.extra_bed_status === 'returned') {
+            extraBedsProcured++;
+          }
+          if (rg.extra_bed_status === 'returned') {
+            extraBedsReturned++;
+          }
+        } else {
+          vacant++;
+        }
+        if (lodge.ac_remote_required) {
+          totalAcRooms++;
+        }
+        if (room.extra_bed) {
+          totalExtraBeds++;
+        }
+      } else {
+        // If filtering by side, we only count rooms that are occupied by this side
+        if (rg && matchesSide) {
+          totalRooms++;
+          assigned++;
+          if (rg.keys_given === 'given' || rg.keys_given === 'collected' || rg.keys_given === 'reception') {
+            keysGiven++;
+          }
+          if (rg.keys_given === 'collected') {
+            keysCollected++;
+          }
+          if (lodge.ac_remote_required) {
+            totalAcRooms++;
+            if (rg.ac_remote_given === 'given' || rg.ac_remote_given === 'collected' || rg.ac_remote_given === 'reception') {
+              acGiven++;
+            }
+            if (rg.ac_remote_given === 'collected') {
+              acCollected++;
+            }
+          }
+          if (room.extra_bed) {
+            totalExtraBeds++;
+            if (rg.extra_bed_status === 'procured' || rg.extra_bed_status === 'returned') {
+              extraBedsProcured++;
+            }
+            if (rg.extra_bed_status === 'returned') {
+              extraBedsReturned++;
+            }
+          }
+        }
+      }
+    });
+  });
 
   return (
     <div className="screen active">
@@ -118,6 +145,21 @@ export function HomeScreen() {
           </div>
         ) : (
           <>
+            {/* Side filter */}
+            <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--white)', borderBottom: '1px solid var(--border)' }}>
+              <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)' }}>Side:</span>
+              <select
+                value={selectedSide}
+                onChange={e => setSelectedSide(e.target.value)}
+                style={{ width: 'auto', flex: 1, padding: '6px 12px', fontSize: '13px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg)' }}
+              >
+                <option value="All">All Sides</option>
+                <option value="bride">Bride's side</option>
+                <option value="groom">Groom's side</option>
+                <option value="both">Both / Family</option>
+              </select>
+            </div>
+
             <div className="stats-row">
               <div className="stat-card">
                 <div className="stat-num">{totalRooms}</div>
@@ -136,12 +178,33 @@ export function HomeScreen() {
             <div className="section-header">Lodges</div>
             <div className="card">
               {lodges.length === 0 && (
-                <p className="p-6 text-sm text-gray-400 text-center">No lodges yet — add one in the Lodges tab</p>
+                <p className="p-6 text-sm text-gray-400 text-center">No lodges yet — add one in the Configuration tab</p>
               )}
               {lodges.map((lodge) => {
-                const total = lodge.rooms.length;
-                const ass = lodge.rooms.filter(r => r.room_guests.length > 0).length;
-                const vac = total - ass;
+                let total = 0;
+                let ass = 0;
+                let vac = 0;
+
+                lodge.rooms?.forEach(room => {
+                  const rg = room.room_guests?.[0];
+                  const guestObj = rg?.guest ? (Array.isArray(rg.guest) ? rg.guest[0] : rg.guest) : null;
+                  const guestSide = guestObj?.side || 'unassigned';
+                  const matchesSide = selectedSide === 'All' || guestSide === selectedSide;
+
+                  if (selectedSide === 'All') {
+                    total++;
+                    if (rg) ass++;
+                    else vac++;
+                  } else {
+                    if (rg && matchesSide) {
+                      total++;
+                      ass++;
+                    }
+                  }
+                });
+
+                if (selectedSide !== 'All' && total === 0) return null;
+
                 return (
                   <div
                     key={lodge.id}
@@ -158,9 +221,15 @@ export function HomeScreen() {
                       </div>
                     </div>
                     <div className="row-end" style={{ flexDirection: 'row', alignItems: 'center', gap: '8px' }}>
-                      <span className={`badge ${vac > 0 ? 'orange' : 'green'}`}>
-                        {vac > 0 ? `${vac} vacant` : 'Full'}
-                      </span>
+                      {selectedSide === 'All' ? (
+                        <span className={`badge ${vac > 0 ? 'orange' : 'green'}`}>
+                          {vac > 0 ? `${vac} vacant` : 'Full'}
+                        </span>
+                      ) : (
+                        <span className="badge green">
+                          {ass} assigned
+                        </span>
+                      )}
                       <span className="chevron">
                         <ChevronRight className="w-4 h-4" />
                       </span>

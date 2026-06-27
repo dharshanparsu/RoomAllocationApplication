@@ -147,7 +147,7 @@ export function LodgeDetailScreen({ lodgeId }: { lodgeId: string }) {
   function chipStatus(room: Room) {
     if (room.room_guests.length === 0) return 'vacant';
     const kg = room.room_guests[0].keys_given;
-    if (kg === 'given' || kg === 'collected') return 'keys-out';
+    if (kg === 'given' || kg === 'collected' || kg === 'reception') return 'keys-out';
     return 'occupied';
   }
 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ChevronLeft, Key, CheckCircle2, Phone, UserCheck, Save, UserX, Trash, Search, XCircle } from 'lucide-react';
+import { ChevronLeft, Key, CheckCircle2, Phone, UserCheck, Save, UserX, Trash, Search, XCircle, Navigation } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useNavigation } from '../contexts/NavigationContext';
 
@@ -14,6 +14,7 @@ interface GuestForm {
 
 interface SubGuest {
   name: string;
+  phone?: string;
 }
 
 interface RoomData {
@@ -25,7 +26,7 @@ interface RoomData {
   category: string | null;
   extra_bed: boolean;
   notes: string | null;
-  lodge: { id: string; name: string; ac_remote_required?: boolean } | null;
+  lodge: { id: string; name: string; ac_remote_required?: boolean; maps_link?: string | null; address?: string | null } | null;
   room_guests: {
     id: string;
     keys_given: string;
@@ -57,6 +58,13 @@ export function RoomDetailScreen({ roomId }: { roomId: string }) {
   const [keyUpdating, setKeyUpdating] = useState(false);
   const [saved, setSaved] = useState(false);
   const [userInteractedSide, setUserInteractedSide] = useState(false);
+
+  // Custom confirmation modal state
+  const [confirmModal, setConfirmModal] = useState<{
+    show: boolean;
+    message: string;
+    onConfirm: () => void;
+  }>({ show: false, message: '', onConfirm: () => {} });
 
   useEffect(() => {
     if (userInteractedSide) return;
@@ -99,7 +107,7 @@ export function RoomDetailScreen({ roomId }: { roomId: string }) {
       .from('rooms')
       .select(`
         id, room_no, room_type, bed_config, floor, category, extra_bed, notes,
-        lodge:lodges(id, name, ac_remote_required),
+        lodge:lodges(id, name, ac_remote_required, maps_link, address),
         room_guests(id, keys_given, ac_remote_given, extra_bed_status, guest:guests(id, name, phone, party_size, hometown, side, notes, sub_guests))
       `)
       .eq('id', roomId)
@@ -134,28 +142,81 @@ export function RoomDetailScreen({ roomId }: { roomId: string }) {
   const currentRemote = rg?.ac_remote_given ?? 'not_given';
   const currentExtraBed = rg?.extra_bed_status ?? 'not_required';
 
-  async function setKeyStatus(status: string) {
-    if (!rg || keyUpdating) return;
+  async function executeKeyStatusUpdate(status: string) {
+    if (!rg) return;
     setKeyUpdating(true);
-    await supabase.from('room_guests').update({ keys_given: status }).eq('id', rg.id);
+    const { error } = await supabase.from('room_guests').update({ keys_given: status }).eq('id', rg.id);
+    if (error) {
+      alert('Error updating key status: ' + error.message);
+    }
     await load();
     setKeyUpdating(false);
   }
 
-  async function setRemoteStatus(status: string) {
-    if (!rg || keyUpdating) return;
+  async function executeRemoteStatusUpdate(status: string) {
+    if (!rg) return;
     setKeyUpdating(true);
-    await supabase.from('room_guests').update({ ac_remote_given: status }).eq('id', rg.id);
+    const { error } = await supabase.from('room_guests').update({ ac_remote_given: status }).eq('id', rg.id);
+    if (error) {
+      alert('Error updating AC remote status: ' + error.message);
+    }
     await load();
     setKeyUpdating(false);
   }
 
-  async function setExtraBedStatus(status: string) {
-    if (!rg || keyUpdating) return;
+  async function executeExtraBedStatusUpdate(status: string) {
+    if (!rg) return;
     setKeyUpdating(true);
-    await supabase.from('room_guests').update({ extra_bed_status: status }).eq('id', rg.id);
+    const { error } = await supabase.from('room_guests').update({ extra_bed_status: status }).eq('id', rg.id);
+    if (error) {
+      alert('Error updating extra bed status: ' + error.message);
+    }
     await load();
     setKeyUpdating(false);
+  }
+
+  function setKeyStatus(status: string) {
+    if (!rg || keyUpdating) return;
+    const statusLabel =
+      status === 'not_given' ? 'Not Given'
+      : status === 'given' ? 'Given'
+      : status === 'collected' ? 'Collected'
+      : 'Given to Reception';
+    
+    setConfirmModal({
+      show: true,
+      message: `Are you sure you want to change key status to "${statusLabel}"?`,
+      onConfirm: () => executeKeyStatusUpdate(status)
+    });
+  }
+
+  function setRemoteStatus(status: string) {
+    if (!rg || keyUpdating) return;
+    const statusLabel =
+      status === 'not_given' ? 'Not Given'
+      : status === 'given' ? 'Given'
+      : status === 'collected' ? 'Collected'
+      : 'Given to Reception';
+
+    setConfirmModal({
+      show: true,
+      message: `Are you sure you want to change AC remote status to "${statusLabel}"?`,
+      onConfirm: () => executeRemoteStatusUpdate(status)
+    });
+  }
+
+  function setExtraBedStatus(status: string) {
+    if (!rg || keyUpdating) return;
+    const statusLabel =
+      status === 'not_required' ? 'No Extra Bed'
+      : status === 'procured' ? 'Bed Procured'
+      : 'Bed Returned';
+
+    setConfirmModal({
+      show: true,
+      message: `Are you sure you want to change extra bed status to "${statusLabel}"?`,
+      onConfirm: () => executeExtraBedStatusUpdate(status)
+    });
   }
 
   async function saveGuest() {
@@ -263,16 +324,22 @@ export function RoomDetailScreen({ roomId }: { roomId: string }) {
   }
 
   const addSubGuestField = () => {
-    setSubGuests([...subGuests, { name: '' }]);
+    setSubGuests([...subGuests, { name: '', phone: '' }]);
   };
 
   const removeSubGuestField = (index: number) => {
     setSubGuests(subGuests.filter((_, i) => i !== index));
   };
 
-  const updateSubGuest = (index: number, value: string) => {
+  const updateSubGuestName = (index: number, value: string) => {
     const updated = [...subGuests];
-    updated[index].name = value;
+    updated[index] = { ...updated[index], name: value };
+    setSubGuests(updated);
+  };
+
+  const updateSubGuestPhone = (index: number, value: string) => {
+    const updated = [...subGuests];
+    updated[index] = { ...updated[index], phone: value };
     setSubGuests(updated);
   };
 
@@ -309,6 +376,17 @@ export function RoomDetailScreen({ roomId }: { roomId: string }) {
           </div>
         ) : (
           <>
+            {room?.lodge?.maps_link && (
+              <a href={room.lodge.maps_link} target="_blank" rel="noopener noreferrer" className="maps-banner" style={{ margin: '12px 16px 4px 16px' }}>
+                <div className="maps-banner-icon"><Navigation className="w-[18px] h-[18px]" /></div>
+                <div className="maps-banner-body">
+                  <div className="maps-banner-title">{room.lodge.address || room.lodge.name}</div>
+                  <div className="maps-banner-sub">Tap to open in Google Maps</div>
+                </div>
+                <div className="maps-banner-arrow"><ChevronLeft className="w-[18px] h-[18px] rotate-180" /></div>
+              </a>
+            )}
+
             {/* Key status bar */}
             <div className="key-status" style={{ paddingBottom: room?.lodge?.ac_remote_required ? '4px' : '12px' }}>
               <div
@@ -334,6 +412,14 @@ export function RoomDetailScreen({ roomId }: { roomId: string }) {
               >
                 <CheckCircle2 className="w-3.5 h-3.5" />
                 Collected
+              </div>
+              <div
+                className={`key-pill ${currentKey === 'reception' ? 'active-purple' : ''}`}
+                onClick={() => rg && setKeyStatus('reception')}
+                style={{ cursor: rg ? 'pointer' : 'default', opacity: rg ? 1 : 0.5 }}
+              >
+                <Key className="w-3.5 h-3.5" style={{ transform: 'rotate(-45deg)' }} />
+                Reception
               </div>
             </div>
 
@@ -363,6 +449,14 @@ export function RoomDetailScreen({ roomId }: { roomId: string }) {
                 >
                   <CheckCircle2 className="w-3.5 h-3.5" />
                   Collected
+                </div>
+                <div
+                  className={`key-pill ${currentRemote === 'reception' ? 'active-purple' : ''}`}
+                  onClick={() => rg && setRemoteStatus('reception')}
+                  style={{ cursor: rg ? 'pointer' : 'default', opacity: rg ? 1 : 0.5 }}
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  Reception
                 </div>
               </div>
             )}
@@ -507,21 +601,37 @@ export function RoomDetailScreen({ roomId }: { roomId: string }) {
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       {subGuests.map((sub, idx) => (
-                        <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                          <input
-                            type="text"
-                            placeholder={`Sub guest ${idx + 1} name`}
-                            value={sub.name}
-                            onChange={e => updateSubGuest(idx, e.target.value)}
-                            style={{ padding: '6px 8px', fontSize: '13px', flex: 1 }}
-                          />
-                          <button 
-                            type="button"
-                            onClick={() => removeSubGuestField(idx)}
-                            style={{ border: 'none', background: 'none', color: 'var(--red)', cursor: 'pointer', padding: '4px' }}
-                          >
-                            <Trash className="w-4 h-4" />
-                          </button>
+                        <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '10px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg)', marginBottom: '8px' }}>
+                          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                            <input
+                              type="text"
+                              placeholder={`Sub guest ${idx + 1} name`}
+                              value={sub.name}
+                              onChange={e => updateSubGuestName(idx, e.target.value)}
+                              style={{ padding: '6px 8px', fontSize: '13px', flex: 1, background: 'var(--white)', color: 'var(--text)' }}
+                            />
+                            <button 
+                              type="button"
+                              onClick={() => removeSubGuestField(idx)}
+                              style={{ border: 'none', background: 'none', color: 'var(--red)', cursor: 'pointer', padding: '4px' }}
+                            >
+                              <Trash className="w-4 h-4" />
+                            </button>
+                          </div>
+                          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                            <input
+                              type="tel"
+                              placeholder="Phone (optional)"
+                              value={sub.phone ?? ''}
+                              onChange={e => updateSubGuestPhone(idx, e.target.value)}
+                              style={{ padding: '6px 8px', fontSize: '13px', flex: 1, background: 'var(--white)', color: 'var(--text)' }}
+                            />
+                            {sub.phone && (
+                              <a href={`tel:${sub.phone}`} className="call-btn" style={{ width: '32px', height: '32px', boxShadow: 'none' }} title="Call sub guest">
+                                <Phone className="w-4 h-4" />
+                              </a>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -723,6 +833,36 @@ export function RoomDetailScreen({ roomId }: { roomId: string }) {
                 })}
             </div>
             <button className="btn btn-ghost" onClick={() => setShowAssignModal(false)}>Cancel</button>
+          </div>
+        </div>
+      )}
+      {confirmModal.show && (
+        <div className="modal-overlay open" onClick={() => setConfirmModal(prev => ({ ...prev, show: false }))}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ padding: '24px', borderRadius: '20px 20px 0 0' }}>
+            <div className="modal-handle" />
+            <div className="modal-title" style={{ fontSize: '18px', fontWeight: 700, marginBottom: '12px' }}>Confirm Update</div>
+            <p style={{ fontSize: '14px', color: 'var(--text)', marginBottom: '24px', lineHeight: '1.4' }}>
+              {confirmModal.message}
+            </p>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button
+                onClick={() => {
+                  confirmModal.onConfirm();
+                  setConfirmModal(prev => ({ ...prev, show: false }));
+                }}
+                className="btn btn-primary"
+                style={{ flex: 1 }}
+              >
+                Confirm
+              </button>
+              <button
+                onClick={() => setConfirmModal(prev => ({ ...prev, show: false }))}
+                className="btn btn-ghost"
+                style={{ flex: 1 }}
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}
