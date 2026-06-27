@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Great+Vibes&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Lato:wght@300;400;700&display=swap');
 @import "tailwindcss";
 
 :root {
@@ -527,3 +528,582 @@ input:checked + .slider:before { transform: translateX(18px); }
 .sheet-up {
   animation: sheetUp 0.32s cubic-bezier(0.32, 0.72, 0, 1);
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   GUEST PORTAL STYLES (MATCHING E-INVITE THEME)
+   ═══════════════════════════════════════════════════════════════ */
+
+.guest-portal {
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  background: linear-gradient(180deg, #FFF5EE 0%, #FDFAF7 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-family: 'Lato', sans-serif;
+  color: #5A2A1A;
+}
+
+/* ── Login Screen ──────────────────────────────────────────── */
+
+.guest-login {
+  width: 100%;
+  max-width: 400px;
+  padding: 80px 28px 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+
+.guest-login-decor {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 250px;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.guest-login-decor-ring {
+  position: absolute;
+  width: 320px;
+  height: 320px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(180, 100, 70, 0.12);
+  top: -160px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.guest-login-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.guest-login-couple {
+  font-family: 'Great Vibes', cursive;
+  font-size: 34px;
+  font-weight: 400;
+  color: #7A2020;
+  text-align: center;
+  line-height: 1;
+}
+
+.guest-login-date {
+  font-family: 'Lato', sans-serif;
+  font-size: 11px;
+  color: #9A7060;
+  margin-top: 4px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+
+.guest-login-action-header {
+  text-align: center;
+  margin: 32px 0 16px;
+  width: 100%;
+}
+
+.guest-login-main-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: #7A2020;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.guest-login-main-sub {
+  font-family: 'Lato', sans-serif;
+  font-size: 13px;
+  color: #9A7060;
+  margin-top: 6px;
+  font-weight: 500;
+}
+
+.guest-login-decor-ring-2 {
+  width: 440px;
+  height: 440px;
+  top: -220px;
+  border-color: rgba(184, 143, 74, 0.08);
+}
+
+.guest-login-icon {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #B83030, #7A2020);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #FDFAF7;
+  box-shadow: 0 8px 24px rgba(184, 48, 48, 0.25);
+  margin-bottom: 24px;
+  position: relative;
+  z-index: 1;
+  border: 2px solid #F0D8C8;
+}
+
+.guest-login-divider {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 40px 0 24px;
+}
+
+.guest-login-divider::before,
+.guest-login-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(180, 100, 70, 0.35), transparent);
+}
+
+.guest-login-divider span {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: #7A2020;
+  text-transform: uppercase;
+  letter-spacing: 2.5px;
+  white-space: nowrap;
+}
+
+.guest-login-form {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.guest-phone-input {
+  display: flex;
+  align-items: center;
+  border: 1.5px solid rgba(180, 100, 70, 0.25);
+  border-radius: 12px;
+  background: #FDFAF7;
+  overflow: hidden;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.guest-phone-input:focus-within {
+  border-color: #B83030;
+  box-shadow: 0 0 0 4px rgba(184, 48, 48, 0.08);
+}
+
+.guest-phone-prefix {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 12px 14px 16px;
+  border-right: 1px solid rgba(180, 100, 70, 0.2);
+  font-size: 14px;
+  font-weight: 700;
+  color: #9A7060;
+  flex-shrink: 0;
+}
+
+.guest-phone-input input {
+  flex: 1;
+  border: none;
+  outline: none;
+  padding: 14px 16px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #5A2A1A;
+  background: transparent;
+  letter-spacing: 0.5px;
+}
+
+.guest-phone-input input::placeholder {
+  color: #c4aba0;
+  font-weight: 400;
+}
+
+.guest-lookup-btn {
+  width: 100%;
+  padding: 15px;
+  border: none;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #B83030, #7A2020);
+  color: #FDFAF7;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 14px rgba(184, 48, 48, 0.2);
+}
+
+.guest-lookup-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(184, 48, 48, 0.3);
+}
+
+.guest-lookup-btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.guest-lookup-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.guest-btn-content,
+.guest-btn-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.guest-btn-content svg,
+.guest-btn-loading svg {
+  stroke-width: 2.5; /* Makes search icon bold and highly visible */
+  flex-shrink: 0;
+}
+
+.guest-error {
+  width: 100%;
+  margin-top: 16px;
+  padding: 14px 16px;
+  background: rgba(184, 48, 48, 0.05);
+  border: 1px solid rgba(184, 48, 48, 0.2);
+  border-radius: 12px;
+  color: #B83030;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.guest-login-hint {
+  margin-top: 24px;
+  font-size: 13px;
+  color: #9A7060;
+  text-align: center;
+  line-height: 1.5;
+}
+
+/* ── Dashboard ──────────────────────────────────────────────── */
+
+.guest-dashboard {
+  width: 100%;
+  max-width: 440px;
+  padding: 24px 16px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.guest-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  color: #7A2020;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 8px 0;
+  margin-bottom: 4px;
+  letter-spacing: 0.5px;
+}
+
+.guest-back-btn:hover {
+  color: #B83030;
+}
+
+.guest-info-container {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* ── Cards ──────────────────────────────────────────────────── */
+
+.guest-card {
+  background: #FDFAF7;
+  border-radius: 16px;
+  padding: 20px 22px;
+  border: 1px solid rgba(180, 100, 70, 0.18);
+  box-shadow: 0 4px 20px rgba(90, 42, 26, 0.03);
+}
+
+.guest-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'Lato', sans-serif;
+  font-size: 12.5px;
+  font-weight: 800;
+  color: #7A2020;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+}
+
+/* Welcome Card */
+.guest-welcome-card {
+  background: linear-gradient(135deg, #FFEEDE, #FFE8D4);
+  border-color: rgba(180, 100, 70, 0.25);
+}
+
+.guest-welcome-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.guest-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #B83030, #7A2020);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #FDFAF7;
+  flex-shrink: 0;
+  border: 1.5px solid #F0D8C8;
+}
+
+.guest-welcome-name {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: #7A2020;
+  letter-spacing: -0.2px;
+}
+
+.guest-welcome-meta {
+  font-size: 13px;
+  color: #9A7060;
+  margin-top: 2px;
+  font-weight: 600;
+}
+
+.guest-party-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 14px;
+  padding: 5px 12px;
+  background: rgba(122, 32, 32, 0.08);
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #7A2020;
+}
+
+/* Room Card */
+.guest-room-card {
+  border-left: 4px solid #C4826A;
+}
+
+.guest-room-number {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 32px;
+  font-weight: 800;
+  color: #7A2020;
+  margin-top: 12px;
+  letter-spacing: -0.5px;
+}
+
+.guest-room-meta-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.guest-room-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  color: #5A2A1A;
+  font-weight: 600;
+}
+
+.guest-room-meta-item svg {
+  color: #C4826A;
+  flex-shrink: 0;
+}
+
+/* Lodge Card */
+.guest-lodge-address {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 12px;
+  font-size: 14px;
+  color: #9A7060;
+  line-height: 1.5;
+  font-weight: 500;
+}
+
+.guest-lodge-address svg {
+  color: #C4826A;
+}
+
+.guest-maps-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+  padding: 12px 18px;
+  background: linear-gradient(135deg, #C4826A, #A8684A);
+  color: #FDFAF7;
+  border-radius: 12px;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 700;
+  transition: all 0.2s;
+  box-shadow: 0 4px 12px rgba(196, 130, 106, 0.25);
+  letter-spacing: 0.5px;
+}
+
+.guest-maps-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(196, 130, 106, 0.35);
+}
+
+/* Contacts Card */
+.guest-contacts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 14px;
+}
+
+.guest-contact-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  text-decoration: none;
+  color: inherit;
+  transition: background 0.15s;
+  border: 1px solid transparent;
+}
+
+.guest-contact-item:hover {
+  background: rgba(196, 130, 106, 0.06);
+  border-color: rgba(196, 130, 106, 0.12);
+}
+
+.guest-contact-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #FFEEDE;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #C4826A;
+  flex-shrink: 0;
+  border: 1px solid rgba(180, 100, 70, 0.15);
+}
+
+.guest-contact-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.guest-contact-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #5A2A1A;
+}
+
+.guest-contact-role {
+  font-size: 12px;
+  color: #9A7060;
+  font-weight: 600;
+  margin-top: 1px;
+}
+
+.guest-contact-phone-icon {
+  color: #B83030;
+  flex-shrink: 0;
+}
+
+/* Quick Links */
+.guest-links-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.guest-link-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  border-radius: 12px;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 700;
+  transition: all 0.2s;
+  border: 1.5px solid transparent;
+  letter-spacing: 0.5px;
+}
+
+.guest-link-emoji {
+  font-size: 20px;
+}
+
+.guest-link-btn svg {
+  margin-left: auto;
+  opacity: 0.6;
+}
+
+.guest-link-invite {
+  background: #fef3c7;
+  border: 1px solid #fcd34d;
+  color: #92400e;
+}
+
+.guest-link-invite:hover {
+  background: #fde68a;
+}
+
+.guest-link-mandapam {
+  background: #fce7f3;
+  border: 1px solid #f9a8d4;
+  color: #9d174d;
+}
+
+.guest-link-mandapam:hover {
+  background: #fbcfe8;
+}
+
+/* Footer */
+.guest-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 20px;
+  font-size: 12px;
+  color: #a8a29e;
+  font-weight: 500;
+}
+
+.guest-footer svg {
+  color: #f43f5e;
+}
+

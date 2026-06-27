@@ -26,6 +26,7 @@ interface RoomData {
   category: string | null;
   extra_bed: boolean;
   notes: string | null;
+  show_in_directory: boolean;
   lodge: { id: string; name: string; ac_remote_required?: boolean; maps_link?: string | null; address?: string | null } | null;
   room_guests: {
     id: string;
@@ -100,13 +101,14 @@ export function RoomDetailScreen({ roomId }: { roomId: string }) {
     category: 'TRT',
     extra_bed: false,
     notes: '',
+    show_in_directory: true,
   });
 
   async function load() {
     const { data } = await supabase
       .from('rooms')
       .select(`
-        id, room_no, room_type, bed_config, floor, category, extra_bed, notes,
+        id, room_no, room_type, bed_config, floor, category, extra_bed, notes, show_in_directory,
         lodge:lodges(id, name, ac_remote_required, maps_link, address),
         room_guests(id, keys_given, ac_remote_given, extra_bed_status, guest:guests(id, name, phone, party_size, hometown, side, notes, sub_guests))
       `)
@@ -293,6 +295,7 @@ export function RoomDetailScreen({ roomId }: { roomId: string }) {
       category: room.category || 'TRT',
       extra_bed: room.extra_bed || false,
       notes: room.notes || '',
+      show_in_directory: room.show_in_directory !== false, // default to true if undefined/null/true
     });
     setShowEditRoomModal(true);
   };
@@ -308,6 +311,7 @@ export function RoomDetailScreen({ roomId }: { roomId: string }) {
       category: editRoomForm.category,
       extra_bed: editRoomForm.extra_bed,
       notes: editRoomForm.notes.trim() || null,
+      show_in_directory: editRoomForm.show_in_directory,
     }).eq('id', roomId);
     setShowEditRoomModal(false);
     setSaving(false);
@@ -758,6 +762,19 @@ export function RoomDetailScreen({ roomId }: { roomId: string }) {
                 <option>Yes</option>
               </select>
             </div>
+            <div className="form-group" style={{ flexDirection: 'row', alignItems: 'center', gap: '10px', display: 'flex', marginTop: '10px' }}>
+              <input
+                type="checkbox"
+                id="show_in_directory"
+                checked={editRoomForm.show_in_directory}
+                onChange={e => setEditRoomForm(f => ({ ...f, show_in_directory: e.target.checked }))}
+                style={{ width: 'auto', margin: 0, cursor: 'pointer' }}
+              />
+              <label htmlFor="show_in_directory" style={{ margin: 0, fontSize: '14px', fontWeight: 500, cursor: 'pointer' }}>
+                Show this Room in Guest Directory
+              </label>
+            </div>
+
             <div className="form-group">
               <label>Notes</label>
               <textarea
