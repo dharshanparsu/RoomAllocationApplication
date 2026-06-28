@@ -59,8 +59,10 @@ export function AllocationsScreen() {
 
   // Quick inline edit state
   const [editingGuestId, setEditingGuestId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState({ name: '', phone: '' });
+  const [editForm, setEditForm] = useState({ name: '', phone: '', roomNo: '', roomId: '' });
   const [savingGuestId, setSavingGuestId] = useState<string | null>(null);
+
+
 
   // Custom confirmation modal state
   const [confirmModal, setConfirmModal] = useState<{
@@ -69,38 +71,55 @@ export function AllocationsScreen() {
     onConfirm: () => void;
   }>({ show: false, message: '', onConfirm: () => {} });
 
-  async function saveInlineEdit(guestId: string) {
+  async function saveInlineEdit(guestId: string, roomId: string) {
     setSavingGuestId(guestId);
-    const { error } = await supabase
+
+    const guestPromise = supabase
       .from('guests')
       .update({
-        name: editForm.name,
-        phone: editForm.phone || null
+        name: editForm.name.trim(),
+        phone: editForm.phone.trim() || null
       })
       .eq('id', guestId);
 
-    if (!error) {
+    const roomPromise = supabase
+      .from('rooms')
+      .update({
+        room_no: editForm.roomNo.trim()
+      })
+      .eq('id', roomId);
+
+    const [guestRes, roomRes] = await Promise.all([guestPromise, roomPromise]);
+
+    if (!guestRes.error && !roomRes.error) {
       setRooms(prevRooms =>
         prevRooms.map(room => {
-          const updatedGuests = room.room_guests.map(rg => {
-            if (rg.guest && rg.guest.id === guestId) {
-              return {
-                ...rg,
-                guest: {
-                  ...rg.guest,
-                  name: editForm.name,
-                  phone: editForm.phone || null
-                }
-              };
-            }
-            return rg;
-          });
-          return { ...room, room_guests: updatedGuests };
+          if (room.id === roomId) {
+            const updatedGuests = room.room_guests.map(rg => {
+              if (rg.guest && rg.guest.id === guestId) {
+                return {
+                  ...rg,
+                  guest: {
+                    ...rg.guest,
+                    name: editForm.name.trim(),
+                    phone: editForm.phone.trim() || null
+                  }
+                };
+              }
+              return rg;
+            });
+            return {
+              ...room,
+              room_no: editForm.roomNo.trim(),
+              room_guests: updatedGuests
+            };
+          }
+          return room;
         })
       );
       setEditingGuestId(null);
     } else {
-      alert('Error updating guest: ' + error.message);
+      alert('Error updating: ' + (guestRes.error?.message || roomRes.error?.message));
     }
     setSavingGuestId(null);
   }
@@ -451,40 +470,64 @@ export function AllocationsScreen() {
                         {activeGuest ? (
                           editingGuestId === activeGuest.id ? (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', paddingRight: '8px' }}>
-                              <input
-                                type="text"
-                                value={editForm.name}
-                                onChange={e => setEditForm(prev => ({ ...prev, name: e.target.value }))}
-                                placeholder="Guest Name"
-                                style={{
-                                  fontSize: '14px',
-                                  padding: '6px 8px',
-                                  borderRadius: '6px',
-                                  border: '1px solid var(--border)',
-                                  width: '100%',
-                                  background: 'var(--white)',
-                                  color: 'var(--text)'
-                                }}
-                              />
-                              <input
-                                type="text"
-                                value={editForm.phone}
-                                onChange={e => setEditForm(prev => ({ ...prev, phone: e.target.value }))}
-                                placeholder="Phone Number"
-                                style={{
-                                  fontSize: '14px',
-                                  padding: '6px 8px',
-                                  borderRadius: '6px',
-                                  border: '1px solid var(--border)',
-                                  width: '100%',
-                                  background: 'var(--white)',
-                                  color: 'var(--text)'
-                                }}
-                              />
+                              <div>
+                                <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '3px' }}>Guest Name</label>
+                                <input
+                                  type="text"
+                                  value={editForm.name}
+                                  onChange={e => setEditForm(prev => ({ ...prev, name: e.target.value }))}
+                                  placeholder="Guest Name"
+                                  style={{
+                                    fontSize: '14px',
+                                    padding: '6px 8px',
+                                    borderRadius: '6px',
+                                    border: '1px solid var(--border)',
+                                    width: '100%',
+                                    background: 'var(--white)',
+                                    color: 'var(--text)'
+                                  }}
+                                />
+                              </div>
+                              <div>
+                                <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '3px' }}>Phone Number</label>
+                                <input
+                                  type="text"
+                                  value={editForm.phone}
+                                  onChange={e => setEditForm(prev => ({ ...prev, phone: e.target.value }))}
+                                  placeholder="Phone Number"
+                                  style={{
+                                    fontSize: '14px',
+                                    padding: '6px 8px',
+                                    borderRadius: '6px',
+                                    border: '1px solid var(--border)',
+                                    width: '100%',
+                                    background: 'var(--white)',
+                                    color: 'var(--text)'
+                                  }}
+                                />
+                              </div>
+                              <div>
+                                <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '3px' }}>Room Number</label>
+                                <input
+                                  type="text"
+                                  value={editForm.roomNo}
+                                  onChange={e => setEditForm(prev => ({ ...prev, roomNo: e.target.value }))}
+                                  placeholder="Room Number"
+                                  style={{
+                                    fontSize: '14px',
+                                    padding: '6px 8px',
+                                    borderRadius: '6px',
+                                    border: '1px solid var(--border)',
+                                    width: '100%',
+                                    background: 'var(--white)',
+                                    color: 'var(--text)'
+                                  }}
+                                />
+                              </div>
                               <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
                                 <button
                                   disabled={savingGuestId === activeGuest.id}
-                                  onClick={() => saveInlineEdit(activeGuest.id)}
+                                  onClick={() => saveInlineEdit(activeGuest.id, room.id)}
                                   className="btn btn-sm"
                                   style={{ width: 'auto', padding: '4px 12px', fontSize: '12px' }}
                                 >
@@ -541,7 +584,12 @@ export function AllocationsScreen() {
                           <button
                             onClick={() => {
                               setEditingGuestId(activeGuest.id);
-                              setEditForm({ name: activeGuest.name || '', phone: activeGuest.phone || '' });
+                              setEditForm({
+                                name: activeGuest.name || '',
+                                phone: activeGuest.phone || '',
+                                roomNo: room.room_no,
+                                roomId: room.id
+                              });
                             }}
                             className="call-btn"
                             style={{ width: '32px', height: '32px', boxShadow: 'none', background: 'var(--bg)', color: 'var(--text-muted)' }}
