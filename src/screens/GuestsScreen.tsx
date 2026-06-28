@@ -5,6 +5,7 @@ import { useNavigation } from '../contexts/NavigationContext';
 
 interface SubGuest {
   name: string;
+  phone?: string;
 }
 
 interface Guest {
@@ -83,16 +84,22 @@ export function GuestsScreen() {
   }
 
   const addSubGuestField = () => {
-    setSubGuests([...subGuests, { name: '' }]);
+    setSubGuests([...subGuests, { name: '', phone: '' }]);
   };
 
   const removeSubGuestField = (index: number) => {
     setSubGuests(subGuests.filter((_, i) => i !== index));
   };
 
-  const updateSubGuest = (index: number, value: string) => {
+  const updateSubGuestName = (index: number, value: string) => {
     const updated = [...subGuests];
-    updated[index].name = value;
+    updated[index] = { ...updated[index], name: value };
+    setSubGuests(updated);
+  };
+
+  const updateSubGuestPhone = (index: number, value: string) => {
+    const updated = [...subGuests];
+    updated[index] = { ...updated[index], phone: value };
     setSubGuests(updated);
   };
 
@@ -218,21 +225,32 @@ export function GuestsScreen() {
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {subGuests.map((sub, idx) => (
-                  <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                    <input
-                      type="text"
-                      placeholder={`Sub guest ${idx + 1} name`}
-                      value={sub.name}
-                      onChange={e => updateSubGuest(idx, e.target.value)}
-                      style={{ padding: '8px 10px', fontSize: '14px', flex: 1 }}
-                    />
-                    <button 
-                      type="button"
-                      onClick={() => removeSubGuestField(idx)}
-                      style={{ border: 'none', background: 'none', color: 'var(--red)', cursor: 'pointer', padding: '6px' }}
-                    >
-                      <Trash className="w-4 h-4" />
-                    </button>
+                  <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '10px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg)', marginBottom: '8px' }}>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <input
+                        type="text"
+                        placeholder={`Sub guest ${idx + 1} name`}
+                        value={sub.name}
+                        onChange={e => updateSubGuestName(idx, e.target.value)}
+                        style={{ padding: '6px 8px', fontSize: '13px', flex: 1, background: 'var(--white)', color: 'var(--text)' }}
+                      />
+                      <button 
+                        type="button"
+                        onClick={() => removeSubGuestField(idx)}
+                        style={{ border: 'none', background: 'none', color: 'var(--red)', cursor: 'pointer', padding: '4px' }}
+                      >
+                        <Trash className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <input
+                        type="tel"
+                        placeholder="Phone (optional)"
+                        value={sub.phone ?? ''}
+                        onChange={e => updateSubGuestPhone(idx, e.target.value)}
+                        style={{ padding: '6px 8px', fontSize: '13px', flex: 1, background: 'var(--white)', color: 'var(--text)' }}
+                      />
+                    </div>
                   </div>
                 ))}
               </div>

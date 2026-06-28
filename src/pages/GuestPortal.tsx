@@ -256,7 +256,7 @@ export function GuestPortal() {
                   className="guest-link-btn guest-link-mandapam"
                 >
                   <MapPin className="w-5 h-5" />
-                  <span>Venue Location</span>
+                  <span>Wedding Hall Location</span>
                   <ExternalLink className="w-3.5 h-3.5" />
                 </a>
               )}
@@ -299,40 +299,6 @@ export function GuestPortal() {
                   Party of {guest.party_size}
                 </div>
               )}
-            </div>
-
-            {/* Quick Links on Dashboard — Placed prominently right below Welcome Card */}
-            <div className="guest-card guest-links-card">
-              <div className="guest-card-header">
-                <Sparkles className="w-4 h-4" />
-                <span>Wedding Info & Invitation</span>
-              </div>
-              <div className="guest-links-grid">
-                {EVENT.eInviteUrl && (
-                  <a
-                    href={EVENT.eInviteUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="guest-link-btn guest-link-invite"
-                  >
-                    <MailOpen className="w-5 h-5" />
-                    <span>E-Invite</span>
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
-                )}
-                {EVENT.mandapamUrl && (
-                  <a
-                    href={EVENT.mandapamUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="guest-link-btn guest-link-mandapam"
-                  >
-                    <MapPin className="w-5 h-5" />
-                    <span>Venue Location</span>
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
-                )}
-              </div>
             </div>
 
             {/* Room Card */}
@@ -464,6 +430,40 @@ export function GuestPortal() {
             )}
           </div>
         ))}
+
+        {/* Quick Links on Dashboard */}
+        <div className="guest-card guest-links-card">
+          <div className="guest-card-header">
+            <Sparkles className="w-4 h-4" />
+            <span>Wedding Info & Invitation</span>
+          </div>
+          <div className="guest-links-grid">
+            {EVENT.eInviteUrl && (
+              <a
+                href={EVENT.eInviteUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="guest-link-btn guest-link-invite"
+              >
+                <MailOpen className="w-5 h-5" />
+                <span>E-Invite</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            )}
+            {EVENT.mandapamUrl && (
+              <a
+                href={EVENT.mandapamUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="guest-link-btn guest-link-mandapam"
+              >
+                <MapPin className="w-5 h-5" />
+                <span>Wedding Hall Location</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            )}
+          </div>
+        </div>
 
         {/* Footer */}
         <div className="guest-footer">
