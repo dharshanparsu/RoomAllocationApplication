@@ -533,6 +533,15 @@ input:checked + .slider:before { transform: translateX(18px); }
    GUEST PORTAL STYLES (MATCHING E-INVITE THEME)
    ═══════════════════════════════════════════════════════════════ */
 
+body.guest-body {
+  background-color: #FDFAF7 !important;
+}
+
+body.guest-body #root {
+  background: linear-gradient(180deg, #FFF5EE 0%, #FDFAF7 100%) !important;
+  box-shadow: none !important;
+}
+
 .guest-portal {
   width: 100%;
   height: 100%;

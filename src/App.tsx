@@ -42,6 +42,14 @@ function AppRoutes() {
 function App() {
   const hash = useHashRoute();
 
+  useEffect(() => {
+    if (hash === '#guest') {
+      document.body.classList.add('guest-body');
+    } else {
+      document.body.classList.remove('guest-body');
+    }
+  }, [hash]);
+
   // Guest portal — no auth required
   if (hash === '#guest') {
     return <GuestPortal />;
