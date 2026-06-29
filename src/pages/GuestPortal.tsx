@@ -1,20 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Phone, Search, MapPin, BedDouble, Building2, Users, ChevronRight,
   Heart, Sparkles, ArrowLeft, ExternalLink, PhoneCall, Navigation,
-  DoorOpen, Layers, User, MailOpen
+  DoorOpen, Layers, User, MailOpen, Clock
 } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
-
-// ── Event Constants ──────────────────────────────────────────────
-const EVENT = {
-  couple: 'Dharshan & Amulya',
-  date: '05 Jul 2026',
-  eInviteUrl: 'https://dharshan-amulya-inviation.netlify.app/',
-  mandapamUrl: 'https://maps.app.goo.gl/gvPnU5aRGoMvWJkH6',
-  mandapamName: 'Wedding Mandapam',
-};
 
 interface GuestDirectoryItem {
   room_no: string;
@@ -38,6 +30,8 @@ interface GuestLodge {
   incharge_name: string | null;
   incharge_contact: string | null;
   show_directory: boolean;
+  checkin_time?: string | null;
+  checkout_time?: string | null;
   directory: GuestDirectoryItem[] | null;
 }
 
@@ -122,6 +116,40 @@ export function GuestPortal() {
   const [error, setError] = useState<string | null>(null);
   const [guests, setGuests] = useState<GuestResult[] | null>(null);
 
+  // Global settings state
+  const [event, setEvent] = useState({
+    couple: 'Dharshan & Amulya',
+    date: '05 Jul 2026',
+    eInviteUrl: 'https://dharshan-amulya-inviation.netlify.app/',
+    mandapamUrl: 'https://maps.app.goo.gl/gvPnU5aRGoMvWJkH6',
+    autoDriverNumber: '',
+  });
+
+  const loadGlobalSettings = async () => {
+    try {
+      const { data, error } = await supabase.from('settings').select('key, value');
+      if (!error && data) {
+        const map: any = {};
+        data.forEach((item: any) => {
+          map[item.key] = item.value || '';
+        });
+        setEvent({
+          couple: map.couple || 'Dharshan & Amulya',
+          date: map.date || '05 Jul 2026',
+          eInviteUrl: map.e_invite_url || '',
+          mandapamUrl: map.mandapam_url || '',
+          autoDriverNumber: map.auto_driver_number || '',
+        });
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  useEffect(() => {
+    loadGlobalSettings();
+  }, []);
+
   const handleLookup = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -141,6 +169,15 @@ export function GuestPortal() {
         setGuests(null);
       } else {
         setGuests(data.guests);
+        if (data.settings) {
+          setEvent({
+            couple: data.settings.couple || 'Dharshan & Amulya',
+            date: data.settings.date || '05 Jul 2026',
+            eInviteUrl: data.settings.e_invite_url || '',
+            mandapamUrl: data.settings.mandapam_url || '',
+            autoDriverNumber: data.settings.auto_driver_number || '',
+          });
+        }
       }
     } catch {
       setError('Unable to connect. Please check your internet and try again.');
@@ -171,10 +208,10 @@ export function GuestPortal() {
           </div>
 
           <div className="guest-login-header">
-            <h1 className="guest-login-couple">{EVENT.couple}</h1>
+            <h1 className="guest-login-couple">{event.couple}</h1>
             <p className="guest-login-date">
               <Sparkles className="w-3.5 h-3.5" style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px', marginTop: '-2px' }} />
-              {EVENT.date}
+              {event.date}
             </p>
           </div>
 
@@ -236,9 +273,9 @@ export function GuestPortal() {
               <span>Wedding Info & Invitation</span>
             </div>
             <div className="guest-links-grid">
-              {EVENT.eInviteUrl && (
+              {event.eInviteUrl && (
                 <a
-                  href={EVENT.eInviteUrl}
+                  href={event.eInviteUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="guest-link-btn guest-link-invite"
@@ -248,9 +285,9 @@ export function GuestPortal() {
                   <ExternalLink className="w-3.5 h-3.5" />
                 </a>
               )}
-              {EVENT.mandapamUrl && (
+              {event.mandapamUrl && (
                 <a
-                  href={EVENT.mandapamUrl}
+                  href={event.mandapamUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="guest-link-btn guest-link-mandapam"
@@ -366,12 +403,19 @@ export function GuestPortal() {
                     {guest.lodge.address}
                   </p>
                 )}
+                {guest.lodge.checkin_time && guest.lodge.checkout_time && (
+                  <p className="guest-lodge-address" style={{ marginTop: '6px' }}>
+                    <Clock className="w-3.5 h-3.5" style={{ flexShrink: 0, marginTop: '2px' }} />
+                    <span>Check-in: {guest.lodge.checkin_time} · Check-out: {guest.lodge.checkout_time}</span>
+                  </p>
+                )}
                 {guest.lodge.maps_link && (
                   <a
                     href={guest.lodge.maps_link}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="guest-maps-btn"
+                    style={{ marginTop: '12px' }}
                   >
                     <Navigation className="w-4 h-4" />
                     Open in Google Maps
@@ -382,7 +426,7 @@ export function GuestPortal() {
             )}
 
             {/* Contacts Card */}
-            {guest.lodge && (guest.lodge.contacts?.length || guest.lodge.incharge_name) && (
+            {guest.lodge && (guest.lodge.contacts?.length || guest.lodge.incharge_name || event.autoDriverNumber) && (
               <div className="guest-card guest-contacts-card">
                 <div className="guest-card-header">
                   <PhoneCall className="w-4 h-4" />
@@ -420,6 +464,22 @@ export function GuestPortal() {
                       <Phone className="w-4 h-4 guest-contact-phone-icon" />
                     </a>
                   ))}
+                  {/* Local Auto Rickshaw Contact (at own cost) */}
+                  {event.autoDriverNumber && (
+                    <a
+                      href={`tel:${event.autoDriverNumber}`}
+                      className="guest-contact-item"
+                    >
+                      <div className="guest-contact-avatar" style={{ background: 'rgba(217, 119, 6, 0.1)', color: 'var(--orange)' }}>
+                        <Navigation className="w-4 h-4" style={{ transform: 'rotate(45deg)' }} />
+                      </div>
+                      <div className="guest-contact-info">
+                        <span className="guest-contact-name">Local Auto/Rickshaw</span>
+                        <span className="guest-contact-role">At own cost</span>
+                      </div>
+                      <Phone className="w-4 h-4 guest-contact-phone-icon" />
+                    </a>
+                  )}
                 </div>
               </div>
             )}
@@ -431,16 +491,16 @@ export function GuestPortal() {
           </div>
         ))}
 
-        {/* Quick Links on Dashboard */}
+        {/* Quick Links on Dashboard — Moved to the bottom of the page */}
         <div className="guest-card guest-links-card">
           <div className="guest-card-header">
             <Sparkles className="w-4 h-4" />
             <span>Wedding Info & Invitation</span>
           </div>
           <div className="guest-links-grid">
-            {EVENT.eInviteUrl && (
+            {event.eInviteUrl && (
               <a
-                href={EVENT.eInviteUrl}
+                href={event.eInviteUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="guest-link-btn guest-link-invite"
@@ -450,9 +510,9 @@ export function GuestPortal() {
                 <ExternalLink className="w-3.5 h-3.5" />
               </a>
             )}
-            {EVENT.mandapamUrl && (
+            {event.mandapamUrl && (
               <a
-                href={EVENT.mandapamUrl}
+                href={event.mandapamUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="guest-link-btn guest-link-mandapam"
@@ -468,7 +528,7 @@ export function GuestPortal() {
         {/* Footer */}
         <div className="guest-footer">
           <Heart className="w-3 h-3" />
-          <span>{EVENT.couple} · {EVENT.date}</span>
+          <span>{event.couple} · {event.date}</span>
         </div>
       </div>
     </div>

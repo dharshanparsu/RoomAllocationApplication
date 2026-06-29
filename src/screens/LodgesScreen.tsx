@@ -23,7 +23,7 @@ export function LodgesScreen() {
   const [lodges, setLodges] = useState<Lodge[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
-  const [form, setForm] = useState({ name: '', address: '', maps_link: '' });
+  const [form, setForm] = useState({ name: '', address: '', maps_link: '', checkin_time: '04 Jul, 12:00 PM', checkout_time: '05 Jul, 11:00 AM' });
   const [contacts, setContacts] = useState<Contact[]>([
     { name: '', phone: '', role: 'Lodge Contact' }
   ]);
@@ -32,7 +32,7 @@ export function LodgesScreen() {
   async function load() {
     const { data } = await supabase
       .from('lodges')
-      .select('id, name, address, maps_link, contacts, rooms(id, room_guests(id))')
+      .select('id, name, address, maps_link, contacts, checkin_time, checkout_time, rooms(id, room_guests(id))')
       .order('name');
     setLodges((data ?? []) as Lodge[]);
     setLoading(false);
@@ -52,8 +52,10 @@ export function LodgesScreen() {
       address: form.address.trim() || null,
       maps_link: form.maps_link.trim() || null,
       contacts: activeContacts,
+      checkin_time: form.checkin_time.trim() || null,
+      checkout_time: form.checkout_time.trim() || null,
     });
-    setForm({ name: '', address: '', maps_link: '' });
+    setForm({ name: '', address: '', maps_link: '', checkin_time: '04 Jul, 12:00 PM', checkout_time: '05 Jul, 11:00 AM' });
     setContacts([{ name: '', phone: '', role: 'Lodge Contact' }]);
     setShowAdd(false);
     setSaving(false);
@@ -223,6 +225,27 @@ export function LodgesScreen() {
                     </div>
                   </div>
                 ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2" style={{ marginBottom: '16px' }}>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label>Check-in Time</label>
+                <input
+                  type="text"
+                  placeholder="e.g. 12:00 PM"
+                  value={form.checkin_time}
+                  onChange={e => setForm(f => ({ ...f, checkin_time: e.target.value }))}
+                />
+              </div>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label>Check-out Time</label>
+                <input
+                  type="text"
+                  placeholder="e.g. 11:00 AM"
+                  value={form.checkout_time}
+                  onChange={e => setForm(f => ({ ...f, checkout_time: e.target.value }))}
+                />
               </div>
             </div>
 
