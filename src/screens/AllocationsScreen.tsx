@@ -51,7 +51,8 @@ export function AllocationsScreen() {
   const [selectedLodge, setSelectedLodge] = useState('All');
   const [selectedKeyStatus, setSelectedKeyStatus] = useState('All');
   const [selectedSide, setSelectedSide] = useState('All');
-  const [selectedOccupancy, setSelectedOccupancy] = useState('All');
+  const [selectedAcStatus, setSelectedAcStatus] = useState('All');
+  const [selectedExtraBedStatus, setSelectedExtraBedStatus] = useState('All');
   const [showFilters, setShowFilters] = useState(true);
 
   // Loading/saving state per room guest for inline actions
@@ -59,10 +60,10 @@ export function AllocationsScreen() {
 
   // Quick inline edit state
   const [editingGuestId, setEditingGuestId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState({ name: '', phone: '', roomNo: '', roomId: '' });
+  const [editingRoomId, setEditingRoomId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ name: '', phone: '', roomNo: '', roomId: '', side: 'bride' });
   const [savingGuestId, setSavingGuestId] = useState<string | null>(null);
-
-
+  const [savingRoomId, setSavingRoomId] = useState<string | null>(null);
 
   // Custom confirmation modal state
   const [confirmModal, setConfirmModal] = useState<{
@@ -71,57 +72,84 @@ export function AllocationsScreen() {
     onConfirm: () => void;
   }>({ show: false, message: '', onConfirm: () => {} });
 
-  async function saveInlineEdit(guestId: string, roomId: string) {
-    setSavingGuestId(guestId);
-
-    const guestPromise = supabase
-      .from('guests')
-      .update({
-        name: editForm.name.trim(),
-        phone: editForm.phone.trim() || null
-      })
-      .eq('id', guestId);
-
-    const roomPromise = supabase
-      .from('rooms')
-      .update({
-        room_no: editForm.roomNo.trim()
-      })
-      .eq('id', roomId);
-
-    const [guestRes, roomRes] = await Promise.all([guestPromise, roomPromise]);
-
-    if (!guestRes.error && !roomRes.error) {
-      setRooms(prevRooms =>
-        prevRooms.map(room => {
-          if (room.id === roomId) {
-            const updatedGuests = room.room_guests.map(rg => {
-              if (rg.guest && rg.guest.id === guestId) {
-                return {
-                  ...rg,
-                  guest: {
-                    ...rg.guest,
-                    name: editForm.name.trim(),
-                    phone: editForm.phone.trim() || null
-                  }
-                };
-              }
-              return rg;
-            });
-            return {
-              ...room,
-              room_no: editForm.roomNo.trim(),
-              room_guests: updatedGuests
-            };
-          }
-          return room;
-        })
-      );
-      setEditingGuestId(null);
-    } else {
-      alert('Error updating: ' + (guestRes.error?.message || roomRes.error?.message));
+  async function saveInlineEdit(guestId: string | null, roomId: string) {
+    if (!editForm.name.trim()) {
+      alert('Guest name is required.');
+      return;
     }
-    setSavingGuestId(null);
+
+    if (guestId) {
+      setSavingGuestId(guestId);
+
+      const guestPromise = supabase
+        .from('guests')
+        .update({
+          name: editForm.name.trim(),
+          phone: editForm.phone.trim() || null
+        })
+        .eq('id', guestId);
+
+      const roomPromise = supabase
+        .from('rooms')
+        .update({
+          room_no: editForm.roomNo.trim()
+        })
+        .eq('id', roomId);
+
+      const [guestRes, roomRes] = await Promise.all([guestPromise, roomPromise]);
+
+      if (!guestRes.error && !roomRes.error) {
+        await loadData();
+        setEditingGuestId(null);
+      } else {
+        alert('Error updating: ' + (guestRes.error?.message || roomRes.error?.message));
+      }
+      setSavingGuestId(null);
+    } else {
+      setSavingRoomId(roomId);
+
+      // 1. Create new guest
+      const { data: newGuest, error: guestError } = await supabase
+        .from('guests')
+        .insert({
+          name: editForm.name.trim(),
+          phone: editForm.phone.trim() || null,
+          side: editForm.side,
+          party_size: 1
+        })
+        .select()
+        .single();
+
+      if (guestError) {
+        alert('Error creating guest: ' + guestError.message);
+        setSavingRoomId(null);
+        return;
+      }
+
+      // 2. Create room_guest assignment mapping
+      const { error: mapError } = await supabase
+        .from('room_guests')
+        .insert({
+          room_id: roomId,
+          guest_id: newGuest.id
+        });
+
+      // 3. Update room number if modified
+      const { error: roomError } = await supabase
+        .from('rooms')
+        .update({
+          room_no: editForm.roomNo.trim()
+        })
+        .eq('id', roomId);
+
+      if (!mapError && !roomError) {
+        await loadData();
+        setEditingRoomId(null);
+      } else {
+        alert('Error mapping room: ' + (mapError?.message || roomError?.message));
+      }
+      setSavingRoomId(null);
+    }
   }
 
   async function loadData() {
@@ -154,6 +182,41 @@ export function AllocationsScreen() {
   useEffect(() => {
     loadData();
   }, []);
+
+  useEffect(() => {
+    const filterLodge = sessionStorage.getItem('filter_lodge');
+    const filterSide = sessionStorage.getItem('filter_side');
+    const filterKeyStatus = sessionStorage.getItem('filter_key_status');
+    const filterAcStatus = sessionStorage.getItem('filter_ac_status');
+    const filterBedStatus = sessionStorage.getItem('filter_bed_status');
+
+    if (filterLodge) {
+      setSelectedLodge(filterLodge);
+      sessionStorage.removeItem('filter_lodge');
+    }
+    if (filterSide) {
+      setSelectedSide(filterSide);
+      sessionStorage.removeItem('filter_side');
+    }
+    if (filterKeyStatus) {
+      setSelectedKeyStatus(filterKeyStatus);
+      setSelectedAcStatus('All');
+      setSelectedExtraBedStatus('All');
+      sessionStorage.removeItem('filter_key_status');
+    }
+    if (filterAcStatus) {
+      setSelectedAcStatus(filterAcStatus);
+      setSelectedKeyStatus('All');
+      setSelectedExtraBedStatus('All');
+      sessionStorage.removeItem('filter_ac_status');
+    }
+    if (filterBedStatus) {
+      setSelectedExtraBedStatus(filterBedStatus);
+      setSelectedKeyStatus('All');
+      setSelectedAcStatus('All');
+      sessionStorage.removeItem('filter_bed_status');
+    }
+  }, [rooms]);
 
   async function executeKeyStatusUpdate(roomGuestId: string, newStatus: string) {
     setUpdatingGuestId(roomGuestId);
@@ -316,11 +379,21 @@ export function AllocationsScreen() {
       return false;
     }
 
-    // Occupancy filter
-    if (selectedOccupancy !== 'All') {
-      const hasGuest = !!activeGuest;
-      if (selectedOccupancy === 'assigned' && !hasGuest) return false;
-      if (selectedOccupancy === 'vacant' && hasGuest) return false;
+    // AC status filter
+    if (selectedAcStatus !== 'All') {
+      const currentAc = activeRG?.ac_remote_given || 'not_given';
+      if (selectedAcStatus === 'not_given' && currentAc !== 'not_given' && currentAc !== 'none') return false;
+      if (selectedAcStatus === 'given' && currentAc !== 'given' && currentAc !== 'reception') return false;
+      if (selectedAcStatus === 'collected' && currentAc !== 'collected' && currentAc !== 'back') return false;
+      if (selectedAcStatus === 'reception' && currentAc !== 'reception') return false;
+    }
+
+    // Extra bed status filter
+    if (selectedExtraBedStatus !== 'All') {
+      const currentBed = activeRG?.extra_bed_status || 'not_required';
+      if (selectedExtraBedStatus === 'not_required' && currentBed !== 'not_required' && currentBed !== 'none') return false;
+      if (selectedExtraBedStatus === 'procured' && currentBed !== 'procured') return false;
+      if (selectedExtraBedStatus === 'returned' && currentBed !== 'returned') return false;
     }
 
     return true;
@@ -358,8 +431,8 @@ export function AllocationsScreen() {
 
       {/* Expanded Filters */}
       {showFilters && (
-        <div style={{ background: 'var(--bg)', borderBottom: '1px solid var(--border)', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <div className="grid grid-cols-2 gap-3">
+        <div style={{ background: 'var(--bg)', borderBottom: '1px solid var(--border)', padding: '12px 16px' }}>
+          <div className="grid grid-cols-3 gap-3">
             <div>
               <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase' }}>Lodge</label>
               <select
@@ -386,9 +459,7 @@ export function AllocationsScreen() {
                 <option value="reception">Given to Reception</option>
               </select>
             </div>
-          </div>
 
-          <div className="grid grid-cols-2 gap-3">
             <div>
               <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase' }}>Side</label>
               <select
@@ -402,20 +473,34 @@ export function AllocationsScreen() {
                 <option value="both">Both / Family</option>
               </select>
             </div>
-
-            <div>
-              <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase' }}>Occupancy</label>
-              <select
-                value={selectedOccupancy}
-                onChange={e => setSelectedOccupancy(e.target.value)}
-                style={{ width: '100%', padding: '6px 8px', fontSize: '13px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--white)' }}
-              >
-                <option value="All">All Rooms</option>
-                <option value="assigned">Occupied / Assigned</option>
-                <option value="vacant">Vacant / Unassigned</option>
-              </select>
-            </div>
           </div>
+        </div>
+      )}
+
+      {/* Active Special Filters Alert Banner */}
+      {(selectedAcStatus !== 'All' || selectedExtraBedStatus !== 'All' || selectedKeyStatus !== 'All' || selectedLodge !== 'All' || selectedSide !== 'All') && (
+        <div style={{ background: 'var(--blue-bg)', borderBottom: '1px solid var(--border)', padding: '8px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontSize: '12px', color: 'var(--blue)', fontWeight: 600 }}>
+            Active Filters: {[
+              selectedLodge !== 'All' && 'Lodge',
+              selectedSide !== 'All' && 'Side',
+              selectedKeyStatus !== 'All' && `Keys (${selectedKeyStatus.replace('_', ' ')})`,
+              selectedAcStatus !== 'All' && `AC Remotes (${selectedAcStatus.replace('_', ' ')})`,
+              selectedExtraBedStatus !== 'All' && `Extra Beds (${selectedExtraBedStatus})`
+            ].filter(Boolean).join(', ')}
+          </span>
+          <button 
+            onClick={() => {
+              setSelectedKeyStatus('All');
+              setSelectedAcStatus('All');
+              setSelectedExtraBedStatus('All');
+              setSelectedLodge('All');
+              setSelectedSide('All');
+            }} 
+            style={{ background: 'none', border: 'none', color: 'var(--blue)', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}
+          >
+            Clear Filters
+          </button>
         </div>
       )}
 
@@ -467,7 +552,102 @@ export function AllocationsScreen() {
                     {/* Guest Body / Details */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        {activeGuest ? (
+                        {editingRoomId === room.id ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', paddingRight: '8px' }}>
+                            <div>
+                              <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '3px' }}>Guest Name</label>
+                              <input
+                                type="text"
+                                value={editForm.name}
+                                onChange={e => setEditForm(prev => ({ ...prev, name: e.target.value }))}
+                                placeholder="Guest Name"
+                                style={{
+                                  fontSize: '14px',
+                                  padding: '6px 8px',
+                                  borderRadius: '6px',
+                                  border: '1px solid var(--border)',
+                                  width: '100%',
+                                  background: 'var(--white)',
+                                  color: 'var(--text)'
+                                }}
+                              />
+                            </div>
+                            <div>
+                              <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '3px' }}>Phone Number</label>
+                              <input
+                                type="text"
+                                value={editForm.phone}
+                                onChange={e => setEditForm(prev => ({ ...prev, phone: e.target.value }))}
+                                placeholder="Phone Number"
+                                style={{
+                                  fontSize: '14px',
+                                  padding: '6px 8px',
+                                  borderRadius: '6px',
+                                  border: '1px solid var(--border)',
+                                  width: '100%',
+                                  background: 'var(--white)',
+                                  color: 'var(--text)'
+                                }}
+                              />
+                            </div>
+                            <div>
+                              <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '3px' }}>Guest Side</label>
+                              <select
+                                value={editForm.side}
+                                onChange={e => setEditForm(prev => ({ ...prev, side: e.target.value }))}
+                                style={{
+                                  fontSize: '14px',
+                                  padding: '6px 8px',
+                                  borderRadius: '6px',
+                                  border: '1px solid var(--border)',
+                                  width: '100%',
+                                  background: 'var(--white)',
+                                  color: 'var(--text)',
+                                  fontFamily: 'inherit'
+                                }}
+                              >
+                                <option value="bride">Bride Side</option>
+                                <option value="groom">Groom Side</option>
+                                <option value="both">Both / Family</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '3px' }}>Room Number</label>
+                              <input
+                                type="text"
+                                value={editForm.roomNo}
+                                onChange={e => setEditForm(prev => ({ ...prev, roomNo: e.target.value }))}
+                                placeholder="Room Number"
+                                style={{
+                                  fontSize: '14px',
+                                  padding: '6px 8px',
+                                  borderRadius: '6px',
+                                  border: '1px solid var(--border)',
+                                  width: '100%',
+                                  background: 'var(--white)',
+                                  color: 'var(--text)'
+                                }}
+                              />
+                            </div>
+                            <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                              <button
+                                disabled={savingRoomId === room.id}
+                                onClick={() => saveInlineEdit(null, room.id)}
+                                className="btn btn-sm"
+                                style={{ width: 'auto', padding: '4px 12px', fontSize: '12px' }}
+                              >
+                                {savingRoomId === room.id ? 'Assigning...' : 'Assign'}
+                              </button>
+                              <button
+                                onClick={() => setEditingRoomId(null)}
+                                className="btn btn-sm btn-ghost"
+                                style={{ width: 'auto', padding: '4px 12px', fontSize: '12px' }}
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        ) : activeGuest ? (
                           editingGuestId === activeGuest.id ? (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', paddingRight: '8px' }}>
                               <div>
@@ -557,13 +737,13 @@ export function AllocationsScreen() {
                                   {activeGuest.phone}
                                 </div>
                               )}
-
+ 
                               {activeGuest.hometown && (
                                 <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '1px' }}>
                                   From: {activeGuest.hometown}
                                 </div>
                               )}
-
+ 
                               {activeGuest.sub_guests && activeGuest.sub_guests.length > 0 && (
                                 <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '3px', fontStyle: 'italic' }}>
                                   Subs: {activeGuest.sub_guests.map(s => s.phone ? `${s.name} (${s.phone})` : s.name).join(', ')}
@@ -588,7 +768,8 @@ export function AllocationsScreen() {
                                 name: activeGuest.name || '',
                                 phone: activeGuest.phone || '',
                                 roomNo: room.room_no,
-                                roomId: room.id
+                                roomId: room.id,
+                                side: activeGuest.side || 'bride'
                               });
                             }}
                             className="call-btn"
@@ -891,7 +1072,16 @@ export function AllocationsScreen() {
                       </>
                     ) : (
                       <div
-                        onClick={() => navigate({ name: 'room', roomId: room.id })}
+                        onClick={() => {
+                          setEditingRoomId(room.id);
+                          setEditForm({
+                            name: '',
+                            phone: '',
+                            roomNo: room.room_no,
+                            roomId: room.id,
+                            side: 'bride'
+                          });
+                        }}
                         style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '6px', background: 'var(--bg)', borderRadius: '8px', fontSize: '12px', color: 'var(--blue)', fontWeight: 600, cursor: 'pointer', border: '1px dashed var(--blue-mid)', marginTop: '4px' }}
                       >
                         + Tap to Assign Guest

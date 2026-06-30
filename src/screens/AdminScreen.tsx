@@ -39,6 +39,10 @@ export function AdminScreen() {
   const [selectedRooms, setSelectedRooms] = useState<string[]>([]);
   const [savingUser, setSavingUser] = useState(false);
 
+  // Search & Filter state for assigning rooms
+  const [assignSearch, setAssignSearch] = useState('');
+  const [assignLodgeFilter, setAssignLodgeFilter] = useState('All');
+
   async function load() {
     const [pendingRes, approvedRes, roomsRes] = await Promise.all([
       supabase.from('users').select('id, email, role, status, side').eq('status', 'pending').order('created_at'),
@@ -71,6 +75,8 @@ export function AdminScreen() {
     setEditRole(user.role);
     setEditSide(user.side || 'both');
     setSelectedRooms(user.room_access?.map(ra => ra.room_id) || []);
+    setAssignSearch('');
+    setAssignLodgeFilter('All');
   };
 
   const toggleRoomSelection = (roomId: string) => {
@@ -80,22 +86,32 @@ export function AdminScreen() {
   };
 
   const selectRoomsBySide = (side: 'bride' | 'groom' | 'all' | 'none') => {
+    // Get visible rooms matching current search and lodge filter inside modal
+    const visibleRooms = rooms.filter(room => {
+      const lodgeName = room.lodge?.name || '';
+      const roomNo = room.room_no || '';
+      const matchesLodge = assignLodgeFilter === 'All' || lodgeName === assignLodgeFilter;
+      const matchesSearch = !assignSearch.trim() || 
+        lodgeName.toLowerCase().includes(assignSearch.toLowerCase()) ||
+        roomNo.toLowerCase().includes(assignSearch.toLowerCase());
+      return matchesLodge && matchesSearch;
+    });
+
+    const visibleRoomIds = visibleRooms.map(r => r.id);
+
     if (side === 'all') {
-      setSelectedRooms(rooms.map(r => r.id));
+      setSelectedRooms(prev => Array.from(new Set([...prev, ...visibleRoomIds])));
     } else if (side === 'none') {
-      setSelectedRooms([]);
+      setSelectedRooms(prev => prev.filter(id => !visibleRoomIds.includes(id)));
     } else {
-      const filtered = rooms
+      const matchingIds = visibleRooms
         .filter(r => {
           const guestSide = r.room_guests?.[0]?.guest?.side;
           return guestSide === side;
         })
         .map(r => r.id);
-      
-      setSelectedRooms(prev => {
-        const union = new Set([...prev, ...filtered]);
-        return Array.from(union);
-      });
+
+      setSelectedRooms(prev => Array.from(new Set([...prev, ...matchingIds])));
     }
   };
 
@@ -311,6 +327,50 @@ export function AdminScreen() {
                     <label style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)' }}>Room Access Control</label>
                   </div>
                   
+                  {/* Search and Lodge Filters for Room Access Assignment */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '12px' }}>
+                    <div>
+                      <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '3px', display: 'block' }}>Search Rooms</label>
+                      <input 
+                        type="text" 
+                        placeholder="Search room no..." 
+                        value={assignSearch}
+                        onChange={e => setAssignSearch(e.target.value)}
+                        style={{
+                          fontSize: '13px',
+                          padding: '6px 8px',
+                          borderRadius: '6px',
+                          border: '1px solid var(--border)',
+                          width: '100%',
+                          background: 'var(--white)',
+                          color: 'var(--text)'
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '3px', display: 'block' }}>Lodge Filter</label>
+                      <select
+                        value={assignLodgeFilter}
+                        onChange={e => setAssignLodgeFilter(e.target.value)}
+                        style={{
+                          fontSize: '13px',
+                          padding: '6px 8px',
+                          borderRadius: '6px',
+                          border: '1px solid var(--border)',
+                          width: '100%',
+                          background: 'var(--white)',
+                          color: 'var(--text)',
+                          fontFamily: 'inherit'
+                        }}
+                      >
+                        <option value="All">All Lodges</option>
+                        {Array.from(new Set(rooms.map(r => r.lodge?.name).filter(Boolean))).map(lName => (
+                          <option key={lName} value={lName}>{lName}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
                   {/* Select shortcuts */}
                   <div style={{ display: 'flex', gap: '6px', marginBottom: '12px', flexWrap: 'wrap' }}>
                     <button 
@@ -332,19 +392,27 @@ export function AdminScreen() {
                       className="btn btn-sm btn-secondary" 
                       style={{ width: 'auto', padding: '4px 8px', fontSize: '11px' }}
                     >
-                      Select All
+                      Select All Visible
                     </button>
                     <button 
                       onClick={() => selectRoomsBySide('none')} 
                       className="btn btn-sm btn-ghost" 
                       style={{ width: 'auto', padding: '4px 8px', fontSize: '11px', color: 'var(--red)' }}
                     >
-                      Clear All
+                      Clear Visible
                     </button>
                   </div>
-
+ 
                   <div className="card" style={{ maxHeight: '250px', overflowY: 'auto' }}>
-                    {rooms.map(room => {
+                    {rooms.filter(room => {
+                      const lodgeName = room.lodge?.name || '';
+                      const roomNo = room.room_no || '';
+                      const matchesLodge = assignLodgeFilter === 'All' || lodgeName === assignLodgeFilter;
+                      const matchesSearch = !assignSearch.trim() || 
+                        lodgeName.toLowerCase().includes(assignSearch.toLowerCase()) ||
+                        roomNo.toLowerCase().includes(assignSearch.toLowerCase());
+                      return matchesLodge && matchesSearch;
+                    }).map(room => {
                       const isSelected = selectedRooms.includes(room.id);
                       const guestSide = room.room_guests?.[0]?.guest?.side;
                       return (
