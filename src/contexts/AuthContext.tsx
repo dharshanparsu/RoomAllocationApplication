@@ -54,40 +54,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        try {
-          await loadProfile(session.user.id);
-        } catch (err) {
-          console.error('Error loading profile during session init:', err);
-        }
-      }
-      setLoading(false);
-    }).catch(err => {
-      console.error('Error getting session:', err);
-      setLoading(false);
-    });
+    let active = true;
 
+    // Use onAuthStateChange as the single source of truth for both initial session and subsequent changes.
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (!active) return;
+      
       setSession(session);
       setUser(session?.user ?? null);
+      
       if (session?.user) {
         try {
           await loadProfile(session.user.id);
         } catch (err) {
-          console.error('Error loading profile during auth state change:', err);
+          console.error('Error loading profile in auth listener:', err);
         }
       } else {
         setProfile(null);
       }
-      setLoading(false);
+      
+      if (active) {
+        setLoading(false);
+      }
     });
 
-    return () => subscription?.unsubscribe();
+    return () => {
+      active = false;
+      subscription?.unsubscribe();
+    };
   }, [loadProfile]);
 
   const refreshProfile = useCallback(async () => {
